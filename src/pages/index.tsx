@@ -1,7 +1,9 @@
 import Head from "next/head";
 import Image from "next/image";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Bubblegum_Sans, Geist, Geist_Mono } from "next/font/google";
 import styles from "@/styles/Home.module.css";
+import "../components/bubbles"
+import Bubbles from "../components/bubbles";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -13,7 +15,38 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+
+const wordSource = [
+  "apple", "banana", "cherry", "date", "elderberry", "fig", "grape", "honeydew",
+  "kiwi", "lemon", "mango", "nectarine", "orange", "papaya", "quince", "raspberry",
+  "strawberry", "tangerine", "ugli", "vanilla", "watermelon", "xigua", "yam", "zucchini",
+  "apricot", "blackberry", "blueberry", "cantaloupe", "coconut", "cranberry", "currant",
+  "dragonfruit", "gooseberry", "grapefruit", "guava", "jackfruit", "kumquat", "lime",
+  "lychee", "mandarin", "mulberry", "olive", "passionfruit", "peach", "pear", "persimmon",
+  "pineapple", "plum", "pomegranate", "starfruit", "tamarind",
+  "apple", "banana", "cherry", "date", "elderberry", "fig", "grape", "honeydew",
+  "kiwi", "lemon", "mango", "nectarine", "orange", "papaya", "quince", "raspberry",
+  "strawberry", "tangerine", "ugli", "vanilla", "watermelon", "xigua", "yam", "zucchini",
+  "apricot", "blackberry", "blueberry", "cantaloupe", "coconut", "cranberry", "currant",
+  "dragonfruit", "gooseberry", "grapefruit", "guava", "jackfruit", "kumquat", "lime",
+  "lychee", "mandarin", "mulberry", "olive", "passionfruit", "peach", "pear", "persimmon",
+  "pineapple", "plum", "pomegranate", "starfruit", "tamarind"
+];
+
+// Function to generate a list of random dictionary words
+const generateRandomDictionaryWords = (numWords: number) => {
+  const words = [];
+  for (let i = 0; i < numWords; i++) {
+    const index = i % wordSource.length;
+    words.push(wordSource[index]);
+  }
+  return words;
+};
+
+const randomWords = generateRandomDictionaryWords(200); // Generate 100 random dictionary words
+
 export default function Home() {
+
   return (
     <>
       <Head>
@@ -26,91 +59,8 @@ export default function Home() {
         className={`${styles.page} ${geistSans.variable} ${geistMono.variable}`}
       >
         <main className={styles.main}>
-          <Image
-            className={styles.logo}
-            src="/next.svg"
-            alt="Next.js logo"
-            width={180}
-            height={38}
-            priority
-          />
-          <ol>
-            <li>
-              Get started by editing <code>src/pages/index.tsx</code>.
-            </li>
-            <li>Save and see your changes instantly.</li>
-          </ol>
-
-          <div className={styles.ctas}>
-            <a
-              className={styles.primary}
-              href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <Image
-                className={styles.logo}
-                src="/vercel.svg"
-                alt="Vercel logomark"
-                width={20}
-                height={20}
-              />
-              Deploy now
-            </a>
-            <a
-              href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-              className={styles.secondary}
-            >
-              Read our docs
-            </a>
-          </div>
-        </main>
-        <footer className={styles.footer}>
-          <a
-            href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              aria-hidden
-              src="/file.svg"
-              alt="File icon"
-              width={16}
-              height={16}
-            />
-            Learn
-          </a>
-          <a
-            href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              aria-hidden
-              src="/window.svg"
-              alt="Window icon"
-              width={16}
-              height={16}
-            />
-            Examples
-          </a>
-          <a
-            href="https://nextjs.org?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              aria-hidden
-              src="/globe.svg"
-              alt="Globe icon"
-              width={16}
-              height={16}
-            />
-            Go to nextjs.org →
-          </a>
-        </footer>
+            <Bubbles content={randomWords}/>
+            </main>
       </div>
     </>
   );
