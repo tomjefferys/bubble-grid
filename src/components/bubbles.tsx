@@ -6,6 +6,15 @@ interface Content {
 
 const NUM_COLS = 6;
 
+// Debounce function to limit the rate at which a function can fire
+const debounce = (func: Function, wait: number) => {
+    let timeout: NodeJS.Timeout;
+    return (...args: any[]) => {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func(...args), wait);
+    };
+};
+
 const Bubbles = ({ content } : Content) => {
     const [positions, setPositions] = useState<{ [key: string]: { x: number; y: number } }>({});
     const [scrollPosition, setScrollPosition] = useState(0);
@@ -33,34 +42,55 @@ const Bubbles = ({ content } : Content) => {
         }
     };
 
+    const debouncedHandleScroll = useCallback(debounce(handleScroll, 1000/60), []);
+
     useEffect(() => {
         const container = containerRef.current;
         if (container) {
-            container.addEventListener('scroll', handleScroll);
+            //container.addEventListener('scroll', handleScroll);
+            container.addEventListener('scroll', debouncedHandleScroll);
             return () => {
-                container.removeEventListener('scroll', handleScroll);
+                //container.removeEventListener('scroll', handleScroll);
+                container.removeEventListener('scroll', debouncedHandleScroll);
             };
         }
-    }, []);
+    }, [debouncedHandleScroll]);
 
     const getScale = (element: HTMLDivElement) => {
         const container = containerRef.current;
         if (!container) return 1;
         const containerRect = container.getBoundingClientRect();
         const elementRect = element.getBoundingClientRect();
-        const elementCenter = elementRect.top + elementRect.height / 2;
-        const relativePosition = elementCenter - containerRect.top;
-        const proportionalPosition = relativePosition / containerRect.height;
-        if (proportionalPosition < 0.25) {
+
+        // Calculate the vertical scale
+        const elementVerticalCenter = elementRect.top + elementRect.height / 2;
+        const relativeVerticalPosition = elementVerticalCenter - containerRect.top;
+        const proportionalVerticalPosition = relativeVerticalPosition / containerRect.height;
+        let verticalScale = 1;
+        if (proportionalVerticalPosition < 0.25) {
             const shrinkArea = 0.25 * containerRect.height;
-            const shrink = relativePosition / shrinkArea;
-            return shrink;
-        } else if (proportionalPosition > 0.75) {
+            verticalScale = relativeVerticalPosition / shrinkArea;
+        } else if (proportionalVerticalPosition > 0.75) {
             const shrinkArea = 0.25 * containerRect.height;
-            const shrink = (containerRect.height - relativePosition) / shrinkArea;
-            return shrink;
+            verticalScale = (containerRect.height - relativeVerticalPosition) / shrinkArea;
         }
-        return 1;
+        verticalScale = Math.max(0, verticalScale);
+
+        //Calculate the horizontal scale
+        const elementHorizontalCenter = elementRect.left + elementRect.width / 2;
+        const relativeHorizontalPosition = elementHorizontalCenter - containerRect.left;
+        const proportionalHorizontalPosition = relativeHorizontalPosition / containerRect.width;
+        let horizontalScale = 1;
+        if (proportionalHorizontalPosition < 0.25) {
+            const shrinkArea = 0.25 * containerRect.width;
+            horizontalScale = relativeHorizontalPosition / shrinkArea;
+        } else if (proportionalHorizontalPosition > 0.75) {
+            const shrinkArea = 0.25 * containerRect.width;
+            horizontalScale = (containerRect.width - relativeHorizontalPosition) / shrinkArea;
+        }
+        horizontalScale = Math.min(1, horizontalScale);
+
+        return verticalScale * horizontalScale;
 
         //const scale = 1 + (relativePosition / containerRect.height);
         //return scale;
@@ -86,6 +116,18 @@ const Bubbles = ({ content } : Content) => {
             };
         }
     }, []);
+
+    useEffect(() => {
+        // Apply scaling to each item after the component mounts
+        rowRefs.current.forEach((row) => {
+            if (row) {
+                Array.from(row.children).forEach((child) => {
+                    const el = child as HTMLDivElement;
+                    el.style.transform = `scale(${getScale(el)})`;
+                });
+            }
+        });
+    }, [rows]);
 
     return (
         <div 
@@ -127,6 +169,9 @@ const Bubbles = ({ content } : Content) => {
                                 position: 'relative',
                                 willChange: 'transform',
                                 borderRadius: '50%',
+                                overflow: 'hidden', // Clip content inside the div
+                                boxShadow: '0 0 5px rgba(0, 0, 0, 0.2)', // Add subtle shadow
+                                //transform: 'translateZ(0)', // Trigger hardware acceleration
                             }}
                             ref={(el) => {
                                 setItemRef(el, item);
