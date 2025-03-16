@@ -1,10 +1,21 @@
+import { M_PLUS_1 } from 'next/font/google';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 
 interface Content {
     content : string[];
 }
 
-const NUM_COLS = 6;
+interface Scale {
+    verticalScale: number;
+    horizontalScale: number;
+}
+
+interface Translation {
+    x: number;
+    y: number;
+}
+
+const NUM_COLS = 10;
 
 // Debounce function to limit the rate at which a function can fire
 const debounce = (func: Function, wait: number) => {
@@ -16,8 +27,9 @@ const debounce = (func: Function, wait: number) => {
 };
 
 const Bubbles = ({ content } : Content) => {
-    const [positions, setPositions] = useState<{ [key: string]: { x: number; y: number } }>({});
-    const [scrollPosition, setScrollPosition] = useState(0);
+    //const [positions, setPositions] = useState<{ [key: string]: { x: number; y: number } }>({});
+    const [scrollPosition, setScrollPosition] = useState({ scrollTop: 0, scrollLeft: 0 });
+    const [isLoaded, setIsLoaded] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
     const rowRefs = useRef<HTMLDivElement[]>([]);
     const originalSizes = useRef<{ [key: string]: { width: number; height: number } }>({});
@@ -38,7 +50,11 @@ const Bubbles = ({ content } : Content) => {
 
     const handleScroll = () => {
         if (containerRef.current) {
-            setScrollPosition(containerRef.current.scrollTop);
+            // Ensure scrolling triggers a re-render
+            setScrollPosition({
+                scrollTop: containerRef.current.scrollTop,
+                scrollLeft: containerRef.current.scrollLeft,
+            });
         }
     };
 
@@ -47,20 +63,35 @@ const Bubbles = ({ content } : Content) => {
     useEffect(() => {
         const container = containerRef.current;
         if (container) {
-            //container.addEventListener('scroll', handleScroll);
             container.addEventListener('scroll', debouncedHandleScroll);
             return () => {
-                //container.removeEventListener('scroll', handleScroll);
                 container.removeEventListener('scroll', debouncedHandleScroll);
             };
         }
     }, [debouncedHandleScroll]);
 
-    const getScale = (element: HTMLDivElement) => {
+    useEffect(() => {
         const container = containerRef.current;
-        if (!container) return 1;
+        if (container) {
+            // Set the initial scroll position to 50%
+            container.scrollTop = container.scrollHeight / 2;
+            container.scrollLeft = container.scrollWidth / 2;
+            setScrollPosition({
+                scrollTop: container.scrollTop,
+                scrollLeft: container.scrollLeft,
+            });
+        }
+    }, []);
+
+    const getScale = (element: HTMLDivElement) : Scale => {
+        const container = containerRef.current;
+        if (!container) return {verticalScale: 1, horizontalScale: 1};
         const containerRect = container.getBoundingClientRect();
         const elementRect = element.getBoundingClientRect();
+        const elementCenter = {
+            x: elementRect.left + elementRect.width / 2,
+            y: elementRect.top + elementRect.height / 2
+        }
 
         // Calculate the vertical scale
         const elementVerticalCenter = elementRect.top + elementRect.height / 2;
@@ -88,12 +119,23 @@ const Bubbles = ({ content } : Content) => {
             const shrinkArea = 0.25 * containerRect.width;
             horizontalScale = (containerRect.width - relativeHorizontalPosition) / shrinkArea;
         }
-        horizontalScale = Math.min(1, horizontalScale);
+        horizontalScale = Math.max(0, horizontalScale);
 
-        return verticalScale * horizontalScale;
+        return {verticalScale, horizontalScale};
+    };
 
-        //const scale = 1 + (relativePosition / containerRect.height);
-        //return scale;
+    const getTranslation = (element: HTMLDivElement, scale: Scale, item: string) : Translation => {
+        //const elementRect = element.getBoundingClientRect();
+        const originalSize = originalSizes.current[item];
+        const translateYFraction = 1 - scale.verticalScale;
+        const y = (originalSize.height * translateYFraction);
+
+        const translateXFraction = 1 - scale.horizontalScale;
+        const x = (originalSize.width * translateXFraction) / 2;
+
+
+        
+        return {x, y };
     };
 
     // Split the words into rows
@@ -119,34 +161,40 @@ const Bubbles = ({ content } : Content) => {
 
     useEffect(() => {
         // Apply scaling to each item after the component mounts
-        rowRefs.current.forEach((row) => {
-            if (row) {
-                Array.from(row.children).forEach((child) => {
-                    const el = child as HTMLDivElement;
-                    el.style.transform = `scale(${getScale(el)})`;
-                });
-            }
-        });
-    }, [rows]);
+        //rowRefs.current.forEach((row) => {
+        //    if (row) {
+        //        Array.from(row.children).forEach((child) => {
+        //            const el = child as HTMLDivElement;
+        //            el.style.transform = `scale(${getScale(el)})`;
+        //        });
+        //    }
+        //});
+        setIsLoaded(true);
+    }, [rows, scrollPosition]);
 
     return (
         <div 
             ref={containerRef}
             style={{ 
-                width: '75vw',
+                width: '90vw',
+                maxWidth: '90vw',
                 height: '25vh',
                 position: 'relative',
-                overflow: 'auto',
+                overflowX: 'auto',
+                overflowY: 'auto',
                 display: 'grid',
-                padding: '100px 10px 10px 10px',
-                border: '1px solid white'}}>
+                //padding: '100px 20px 100px 20px',
+                padding: '5vh 15vw',
+                border: '1px solid white',
+                boxSizing: 'border-box',}}>
             {rows.map((row, rowIndex) => (
                 <div key={rowIndex} 
                      ref={(el) => setRowRef(el, rowIndex)}
                      style={{ 
                         display: 'grid', 
-                        gridTemplateColumns: `repeat(${NUM_COLS}, minmax(100px, 1fr))`,
-                        justifyContent: 'center',
+                        //gridTemplateColumns: `repeat(${NUM_COLS}, minmax(100px, 1fr))`,
+                        gridTemplateColumns: `repeat(${NUM_COLS}, minmax(auto, 100px))`,
+                        //justifyContent: 'center',
                         marginLeft: rowIndex % 2 === 1 && rowRefs.current[rowIndex]
                             ? `${originalSizes.current[row[0]]?.width / 2}px`
                         : '0',
@@ -154,11 +202,13 @@ const Bubbles = ({ content } : Content) => {
                             ? `${originalSizes.current[row[0]]?.width / 2}px`
                         : '0',
                         willChange: 'transform',
+                        visibility: isLoaded ? 'visible' : 'hidden',
+                        //minWidth: '100%',
                         }}>
 
                     {row.map((item, index) => (
                         <div
-                            key={item}
+                            key={item} 
                             style={{
                                 border: '1px solid white',
                                 display: 'flex',
@@ -171,12 +221,20 @@ const Bubbles = ({ content } : Content) => {
                                 borderRadius: '50%',
                                 overflow: 'hidden', // Clip content inside the div
                                 boxShadow: '0 0 5px rgba(0, 0, 0, 0.2)', // Add subtle shadow
-                                //transform: 'translateZ(0)', // Trigger hardware acceleration
+                                transform: 'translateZ(0)', // Trigger hardware acceleration
+                                maxWidth: '200px',
+                                minWidth: '100px',
                             }}
+                            data-foo="bar"
                             ref={(el) => {
                                 setItemRef(el, item);
                                 if (el) {
-                                    el.style.transform = `scale(${getScale(el)})`;
+                                    const {verticalScale, horizontalScale} = getScale(el);  
+                                    const scale = verticalScale * horizontalScale;
+                                    const {x, y} = getTranslation(el, {verticalScale, horizontalScale}, item);
+                                    const boundingRect = el.getBoundingClientRect();
+                                    el.style.transform = `scale(${scale}) translate(${x}px, ${y}px)`;
+                                    el.ariaLabel = `RectH: ${boundingRect.height} VS: ${verticalScale}, scale: ${scale}, x: ${x}, y: ${y}`;
                                 }
                             }}
                         >
