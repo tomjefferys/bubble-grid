@@ -14,6 +14,10 @@ interface Translation {
     x: number;
     y: number;
 }
+interface Dimension {
+    x: number;
+    y: number;
+}
 
 const NUM_COLS = 10;
 
@@ -30,6 +34,8 @@ const Bubbles = ({ content } : Content) => {
     //const [positions, setPositions] = useState<{ [key: string]: { x: number; y: number } }>({});
     const [scrollPosition, setScrollPosition] = useState({ scrollTop: 0, scrollLeft: 0 });
     const [isLoaded, setIsLoaded] = useState(false);
+    const [isDragging, setIsDragging] = useState(false);
+    const [startMousePosition, setStartMousePosition] = useState({ x: 0, y: 0 });
     const containerRef = useRef<HTMLDivElement>(null);
     const rowRefs = useRef<HTMLDivElement[]>([]);
     const originalSizes = useRef<{ [key: string]: { width: number; height: number } }>({});
@@ -83,59 +89,70 @@ const Bubbles = ({ content } : Content) => {
         }
     }, []);
 
-    const getScale = (element: HTMLDivElement) : Scale => {
+    const getRatioFromCentre = (element: HTMLDivElement) : Dimension => {
         const container = containerRef.current;
-        if (!container) return {verticalScale: 1, horizontalScale: 1};
+        if (!container) return { x: 0, y: 0 };
         const containerRect = container.getBoundingClientRect();
         const elementRect = element.getBoundingClientRect();
-        const elementCenter = {
-            x: elementRect.left + elementRect.width / 2,
-            y: elementRect.top + elementRect.height / 2
-        }
+        // Get the centre of the container and the element
+        const containerCentre = {
+            x: containerRect.left + containerRect.width / 2,
+            y: containerRect.top + containerRect.height / 2,
+        };
+        const elementCentre = {
+            x: elementRect.left + elementRect.width / 2,    
+            y: elementRect.top + elementRect.height / 2,
+        };
 
-        // Calculate the vertical scale
-        const elementVerticalCenter = elementRect.top + elementRect.height / 2;
-        const relativeVerticalPosition = elementVerticalCenter - containerRect.top;
-        const proportionalVerticalPosition = relativeVerticalPosition / containerRect.height;
+        // Calculate the vertical scale based on the distance from the centre of the container
+        const verticalDistance = containerCentre.y - elementCentre.y;
+        const y = verticalDistance / (containerRect.height / 2);
+
+        const horizontalDistance = containerCentre.x - elementCentre.x;
+        const x = horizontalDistance / (containerRect.width / 2);
+        return { x, y };
+    }
+
+
+    const getScale = (element: HTMLDivElement, ratioFromCentre: Dimension) : Scale => {
+        const container = containerRef.current;
+        if (!container) return {verticalScale: 1, horizontalScale: 1};
+        //const containerRect = container.getBoundingClientRect();
+        //const elementRect = element.getBoundingClientRect();
+
+        const SHRINK_AREA = 0.5;  // The area where the element will shrink, defined as a fraction the distance from the centre.
+
+        const { x, y } = getRatioFromCentre(element);
         let verticalScale = 1;
-        if (proportionalVerticalPosition < 0.25) {
-            const shrinkArea = 0.25 * containerRect.height;
-            verticalScale = relativeVerticalPosition / shrinkArea;
-        } else if (proportionalVerticalPosition > 0.75) {
-            const shrinkArea = 0.25 * containerRect.height;
-            verticalScale = (containerRect.height - relativeVerticalPosition) / shrinkArea;
+        if(Math.abs(y) > (1 - SHRINK_AREA)) {
+            const dY = Math.abs(y) - (1 - SHRINK_AREA);
+            verticalScale = 1 - dY / SHRINK_AREA;
         }
         verticalScale = Math.max(0, verticalScale);
 
-        //Calculate the horizontal scale
-        const elementHorizontalCenter = elementRect.left + elementRect.width / 2;
-        const relativeHorizontalPosition = elementHorizontalCenter - containerRect.left;
-        const proportionalHorizontalPosition = relativeHorizontalPosition / containerRect.width;
         let horizontalScale = 1;
-        if (proportionalHorizontalPosition < 0.25) {
-            const shrinkArea = 0.25 * containerRect.width;
-            horizontalScale = relativeHorizontalPosition / shrinkArea;
-        } else if (proportionalHorizontalPosition > 0.75) {
-            const shrinkArea = 0.25 * containerRect.width;
-            horizontalScale = (containerRect.width - relativeHorizontalPosition) / shrinkArea;
+        if (Math.abs(x) > (1 - SHRINK_AREA)) {
+            const dX = Math.abs(x) - (1 - SHRINK_AREA);
+            horizontalScale = 1 - dX / SHRINK_AREA;
         }
         horizontalScale = Math.max(0, horizontalScale);
-
         return {verticalScale, horizontalScale};
     };
 
-    const getTranslation = (element: HTMLDivElement, scale: Scale, item: string) : Translation => {
+    const getTranslation = (element: HTMLDivElement, centreDelta: Dimension, scale : Scale, item: string) : Translation => {
         //const elementRect = element.getBoundingClientRect();
         const originalSize = originalSizes.current[item];
         const translateYFraction = 1 - scale.verticalScale;
-        const y = (originalSize.height * translateYFraction);
+        const translateYMagnitude = (originalSize.height * translateYFraction) / 2;
+        const y = (Math.sign(centreDelta.y)) * translateYMagnitude;
 
         const translateXFraction = 1 - scale.horizontalScale;
-        const x = (originalSize.width * translateXFraction) / 2;
-
-
+        //const x = (originalSize.width * translateXFraction) / 2;
+        const translateXMagnitude = (originalSize.width * translateXFraction) / 2;
+        const x = (Math.sign(centreDelta.x)) * translateXMagnitude;
         
         return {x, y };
+        //return {x : 0, y: 0};
     };
 
     // Split the words into rows
@@ -165,16 +182,54 @@ const Bubbles = ({ content } : Content) => {
         //    if (row) {
         //        Array.from(row.children).forEach((child) => {
         //            const el = child as HTMLDivElement;
-        //            el.style.transform = `scale(${getScale(el)})`;
+        //            const centreDelta = getRatioFromCentre(el);
+        //            const { verticalScale, horizontalScale } = getScale(el, centreDelta);
+        //            const scale = verticalScale * horizontalScale;
+        //            const { x, y } = getTranslation(el, centreDelta, { horizontalScale, verticalScale }, el.dataset.foo || '');
+        //            el.style.transform = `scale(${scale}) translate(${x}px, ${y}px)`;
         //        });
         //    }
         //});
         setIsLoaded(true);
     }, [rows, scrollPosition]);
 
+    const handleMouseDown = (event: React.MouseEvent<HTMLDivElement>) => {
+        setIsDragging(true);
+        setStartMousePosition({ x: event.clientX, y: event.clientY });
+    };
+
+    const handleMouseMove = (event: MouseEvent) => {
+        if (isDragging && containerRef.current) {
+            const dx = event.clientX - startMousePosition.x;
+            const dy = event.clientY - startMousePosition.y;
+            containerRef.current.scrollLeft -= dx;
+            containerRef.current.scrollTop -= dy;
+            setStartMousePosition({ x: event.clientX, y: event.clientY });
+        }
+    };
+
+    const handleMouseUp = () => {
+        setIsDragging(false);
+    };
+
+    useEffect(() => {
+        if (isDragging) {
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleMouseUp);
+        } else {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        }
+        return () => {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        };
+    }, [isDragging]);
+
     return (
         <div 
             ref={containerRef}
+            onMouseDown={handleMouseDown}
             style={{ 
                 width: '90vw',
                 maxWidth: '90vw',
@@ -186,7 +241,9 @@ const Bubbles = ({ content } : Content) => {
                 //padding: '100px 20px 100px 20px',
                 padding: '5vh 15vw',
                 border: '1px solid white',
-                boxSizing: 'border-box',}}>
+                boxSizing: 'border-box',
+                cursor: isDragging ? 'grabbing' : 'grab', // Change cursor during dragging
+            }}>
             {rows.map((row, rowIndex) => (
                 <div key={rowIndex} 
                      ref={(el) => setRowRef(el, rowIndex)}
@@ -221,7 +278,6 @@ const Bubbles = ({ content } : Content) => {
                                 borderRadius: '50%',
                                 overflow: 'hidden', // Clip content inside the div
                                 boxShadow: '0 0 5px rgba(0, 0, 0, 0.2)', // Add subtle shadow
-                                transform: 'translateZ(0)', // Trigger hardware acceleration
                                 maxWidth: '200px',
                                 minWidth: '100px',
                             }}
@@ -229,12 +285,16 @@ const Bubbles = ({ content } : Content) => {
                             ref={(el) => {
                                 setItemRef(el, item);
                                 if (el) {
-                                    const {verticalScale, horizontalScale} = getScale(el);  
+                                    const centreDelta = getRatioFromCentre(el);
+                                    const {verticalScale, horizontalScale} = getScale(el, centreDelta);  
                                     const scale = verticalScale * horizontalScale;
-                                    const {x, y} = getTranslation(el, {verticalScale, horizontalScale}, item);
+                                    const {x, y} = getTranslation(el, centreDelta, {horizontalScale, verticalScale}, item);
                                     const boundingRect = el.getBoundingClientRect();
-                                    el.style.transform = `scale(${scale}) translate(${x}px, ${y}px)`;
-                                    el.ariaLabel = `RectH: ${boundingRect.height} VS: ${verticalScale}, scale: ${scale}, x: ${x}, y: ${y}`;
+                                    // Translate must come before scale, or the translation amounts will be scaled
+                                    el.style.transform = `translateZ(0) translate(${x}px, ${y}px) scale(${scale}) `;
+                                    el.style.transformOrigin = 'center';
+                                    el.ariaLabel = 
+                                    `RectH: ${boundingRect.height} VS: ${verticalScale}, scale: ${scale}, cd.y: ${centreDelta.y} x: ${x}, y: ${y}`;
                                 }
                             }}
                         >
