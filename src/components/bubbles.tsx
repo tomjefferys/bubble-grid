@@ -39,7 +39,7 @@ const Bubbles = ({ content } : Content) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const rowRefs = useRef<HTMLDivElement[]>([]);
     const originalSizes = useRef<{ [key: string]: { width: number; height: number } }>({});
-
+    const items = useRef<HTMLDivElement[][]>([]);
 
     //const handleDragStart = (event: React.DragEvent<HTMLDivElement>, item: string) => {
     //    event.dataTransfer.setData('text/plain', item);
@@ -167,14 +167,19 @@ const Bubbles = ({ content } : Content) => {
         }
     }, []);
 
-    const setItemRef = useCallback((el: HTMLDivElement | null, item: string) => {
-        if (el && !originalSizes.current[item]) {
-            originalSizes.current[item] = {
-                width: el.getBoundingClientRect().width,
-                height: el.getBoundingClientRect().height,
-            };
-        }
-    }, []);
+    const setItemRef = useCallback((el: HTMLDivElement | null, item: string, row : number, column : number) => {
+        if (el) {
+            if (!items.current[row]) {
+                items.current[row] = [];
+            }
+            items.current[row][column] = el;
+            if (!originalSizes.current[item]) {
+                originalSizes.current[item] = {
+                    width: el.getBoundingClientRect().width,
+                    height: el.getBoundingClientRect().height,
+                };
+            }
+        } }, []);
 
     useEffect(() => {
         // Apply scaling to each item after the component mounts
@@ -283,7 +288,7 @@ const Bubbles = ({ content } : Content) => {
                             }}
                             data-foo="bar"
                             ref={(el) => {
-                                setItemRef(el, item);
+                                setItemRef(el, item, rowIndex, index);
                                 if (el) {
                                     const centreDelta = getRatioFromCentre(el);
                                     const {verticalScale, horizontalScale} = getScale(el, centreDelta);  
