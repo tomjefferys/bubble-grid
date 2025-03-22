@@ -1,4 +1,3 @@
-import { M_PLUS_1 } from 'next/font/google';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 
 interface Content {
