@@ -88,11 +88,13 @@ const Bubbles = ({ content } : Content) => {
         }
     }, []);
 
-    const getRatioFromCentre = (element: HTMLDivElement) : Dimension => {
+    const getRatioFromCentre = (element: HTMLDivElement, row : number) : Dimension => {
         const container = containerRef.current;
         if (!container) return { x: 0, y: 0 };
         const containerRect = container.getBoundingClientRect();
         const elementRect = element.getBoundingClientRect();
+        const rowElement = rowRefs.current[row];
+        const rowRect = rowElement.getBoundingClientRect();
         // Get the centre of the container and the element
         const containerCentre = {
             x: containerRect.left + containerRect.width / 2,
@@ -100,7 +102,10 @@ const Bubbles = ({ content } : Content) => {
         };
         const elementCentre = {
             x: elementRect.left + elementRect.width / 2,    
-            y: elementRect.top + elementRect.height / 2,
+            //y: elementRect.top + elementRect.height / 2,
+            // Use the row rect, rather then the translated element rect
+            // May need to wrap the element in a div to get the correct position
+            y: rowRect.top + rowRect.height / 2,
         };
 
         // Calculate the vertical scale based on the distance from the centre of the container
@@ -121,7 +126,7 @@ const Bubbles = ({ content } : Content) => {
 
         const SHRINK_AREA = 0.5;  // The area where the element will shrink, defined as a fraction the distance from the centre.
 
-        const { x, y } = getRatioFromCentre(element);
+        const { x, y } = ratioFromCentre; //getRatioFromCentre(element, row);
         let verticalScale = 1;
         if(Math.abs(y) > (1 - SHRINK_AREA)) {
             const dY = Math.abs(y) - (1 - SHRINK_AREA);
@@ -138,20 +143,56 @@ const Bubbles = ({ content } : Content) => {
         return {verticalScale, horizontalScale};
     };
 
-    const getTranslation = (element: HTMLDivElement, centreDelta: Dimension, scale : Scale, item: string) : Translation => {
-        //const elementRect = element.getBoundingClientRect();
+    const getTranslation = (element: HTMLDivElement, centreDelta: Dimension, scale : Scale, item: string) 
+        : { t : Translation, debugStr : string } => {
         const originalSize = originalSizes.current[item];
+
+        const MARGIN_SIZE = 2;
+        const height = originalSize.height + MARGIN_SIZE;
+        const width = originalSize.width + MARGIN_SIZE;
+
         const translateYFraction = 1 - scale.verticalScale;
-        const translateYMagnitude = (originalSize.height * translateYFraction) / 2;
-        const y = (Math.sign(centreDelta.y)) * translateYMagnitude;
+        const translateYMagnitude = (height * translateYFraction) / 2;
+        let y = (Math.sign(centreDelta.y)) * translateYMagnitude;
 
         const translateXFraction = 1 - scale.horizontalScale;
-        //const x = (originalSize.width * translateXFraction) / 2;
         const translateXMagnitude = (originalSize.width * translateXFraction) / 2;
         const x = (Math.sign(centreDelta.x)) * translateXMagnitude;
         
-        return {x, y };
-        //return {x : 0, y: 0};
+        let debugStr = "";
+        const container = containerRef.current;
+        if (container) {
+            const containerRect = container.getBoundingClientRect();
+            // Calculate the difference between the spacing of the rows and the optimal spacing.
+            // TODO because the object are ovals, the radius isn't height / 2
+            const radius = (height + width) / 4;
+            const hRadius = height / 2;
+            const wRadius = width / 2;
+            const optimalVerticalDistance = Math.sqrt(3) * hRadius;
+            //const optimalVerticalDistance = Math.sqrt((4*(radius * radius)) - (wRadius * wRadius))
+            // Optimal vertical disatance (oval calculation) is coming out at 63 vs 43 for the height
+            const verticalAdjustment = height - optimalVerticalDistance;
+            if (Math.abs(centreDelta.y) < 2) {
+
+                // This isn't quite right, the distance is too wide, although the scrolling is smooth
+                const distanceFormCentre = centreDelta.y * (containerRect.height/2);
+                const adjustmentRatio = distanceFormCentre / height;
+
+                const dy = adjustmentRatio * verticalAdjustment;
+
+                y += dy;
+
+                debugStr += `dy: ${dy}, 
+                                y: ${y}, 
+                                cd.y: ${centreDelta.y}, 
+                                adj: ${adjustmentRatio}, 
+                                dist: ${distanceFormCentre}, 
+                                opt: ${optimalVerticalDistance}`;
+
+            }
+        }
+
+        return { t: {x, y }, debugStr };
     };
 
     // Split the words into rows
@@ -289,16 +330,16 @@ const Bubbles = ({ content } : Content) => {
                             ref={(el) => {
                                 setItemRef(el, item, rowIndex, index);
                                 if (el) {
-                                    const centreDelta = getRatioFromCentre(el);
+                                    const centreDelta = getRatioFromCentre(el, rowIndex);
                                     const {verticalScale, horizontalScale} = getScale(el, centreDelta);  
                                     const scale = verticalScale * horizontalScale;
-                                    const {x, y} = getTranslation(el, centreDelta, {horizontalScale, verticalScale}, item);
+                                    const {t, debugStr} = getTranslation(el, centreDelta, {horizontalScale, verticalScale}, item);
+                                    const {x, y} = t;
                                     const boundingRect = el.getBoundingClientRect();
                                     // Translate must come before scale, or the translation amounts will be scaled
                                     el.style.transform = `translateZ(0) translate(${x}px, ${y}px) scale(${scale}) `;
                                     el.style.transformOrigin = 'center';
-                                    el.ariaLabel = 
-                                    `RectH: ${boundingRect.height} VS: ${verticalScale}, scale: ${scale}, cd.y: ${centreDelta.y} x: ${x}, y: ${y}`;
+                                    el.ariaLabel = debugStr;
                                 }
                             }}
                         >
