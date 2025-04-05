@@ -37,6 +37,7 @@ const Bubbles = ({ content } : Content) => {
     const [startMousePosition, setStartMousePosition] = useState({ x: 0, y: 0 });
     const containerRef = useRef<HTMLDivElement>(null);
     const rowRefs = useRef<HTMLDivElement[]>([]);
+    const outerDivs = useRef<HTMLDivElement[][]>([]);
     const originalSizes = useRef<{ [key: string]: { width: number; height: number } }>({});
     const items = useRef<HTMLDivElement[][]>([]);
 
@@ -88,33 +89,38 @@ const Bubbles = ({ content } : Content) => {
         }
     }, []);
 
-    const getRatioFromCentre = (element: HTMLDivElement, row : number) : Dimension => {
+    const getRatioFromCentre = (element: HTMLDivElement, row : number, column : number) : Dimension => {
         const container = containerRef.current;
         if (!container) return { x: 0, y: 0 };
         const containerRect = container.getBoundingClientRect();
         const elementRect = element.getBoundingClientRect();
         const rowElement = rowRefs.current[row];
         const rowRect = rowElement.getBoundingClientRect();
+
+        const outerDiv = outerDivs.current[row][column];
+        const outerDivRect = outerDiv.getBoundingClientRect();
+
         // Get the centre of the container and the element
         const containerCentre = {
             x: containerRect.left + containerRect.width / 2,
             y: containerRect.top + containerRect.height / 2,
         };
         const elementCentre = {
-            x: elementRect.left + elementRect.width / 2,    
-            //y: elementRect.top + elementRect.height / 2,
-            // Use the row rect, rather then the translated element rect
-            // May need to wrap the element in a div to get the correct position
-            y: rowRect.top + rowRect.height / 2,
+            x: outerDivRect.left + outerDivRect.width / 2,    
+            y: outerDivRect.top + outerDivRect.height / 2,
         };
+
+        // Increase the height of the container, so elements off the top and bottom are scaled and potentially shown
+        const heightMultiplier = 1.25;
+        const height = containerRect.height * heightMultiplier;
 
         // Calculate the vertical scale based on the distance from the centre of the container
         const verticalDistance = containerCentre.y - elementCentre.y;
-        const y = verticalDistance / (containerRect.height / 2);
+        const y = verticalDistance / (height / 2);
 
         const horizontalDistance = containerCentre.x - elementCentre.x;
         const x = horizontalDistance / (containerRect.width / 2);
-        return { x, y };
+        return { x, y: y };
     }
 
 
@@ -206,6 +212,16 @@ const Bubbles = ({ content } : Content) => {
             rowRefs.current[index] = el;
         }
     }, []);
+
+    const setOuterDivRef = useCallback((el: HTMLDivElement | null, row: number, column : number) => {
+        if (el) {
+            if (!outerDivs.current[row]) {
+                outerDivs.current[row] = [];
+            }
+            outerDivs.current[row][column] = el;
+        }
+    }
+    , []);
 
     const setItemRef = useCallback((el: HTMLDivElement | null, item: string, row : number, column : number) => {
         if (el) {
@@ -309,41 +325,44 @@ const Bubbles = ({ content } : Content) => {
                         }}>
 
                     {row.map((item, index) => (
-                        <div
-                            key={item} 
-                            style={{
-                                border: '1px solid white',
-                                display: 'flex',
-                                justifyContent: 'center',
-                                alignItems: 'center',  
-                                padding: '10px',
-                                margin: '1px',
-                                position: 'relative',
-                                willChange: 'transform',
-                                borderRadius: '50%',
-                                overflow: 'hidden', // Clip content inside the div
-                                boxShadow: '0 0 5px rgba(0, 0, 0, 0.2)', // Add subtle shadow
-                                maxWidth: '200px',
-                                minWidth: '100px',
-                            }}
-                            data-foo="bar"
-                            ref={(el) => {
-                                setItemRef(el, item, rowIndex, index);
-                                if (el) {
-                                    const centreDelta = getRatioFromCentre(el, rowIndex);
-                                    const {verticalScale, horizontalScale} = getScale(el, centreDelta);  
-                                    const scale = verticalScale * horizontalScale;
-                                    const {t, debugStr} = getTranslation(el, centreDelta, {horizontalScale, verticalScale}, item);
-                                    const {x, y} = t;
-                                    const boundingRect = el.getBoundingClientRect();
-                                    // Translate must come before scale, or the translation amounts will be scaled
-                                    el.style.transform = `translateZ(0) translate(${x}px, ${y}px) scale(${scale}) `;
-                                    el.style.transformOrigin = 'center';
-                                    el.ariaLabel = debugStr;
-                                }
-                            }}
-                        >
-                            {item}
+                        <div key = {item + "_outer"}
+                             ref = {(el) => setOuterDivRef(el, rowIndex, index)}>
+                            <div
+                                key={item} 
+                                style={{
+                                    border: '1px solid white',
+                                    display: 'flex',
+                                    justifyContent: 'center',
+                                    alignItems: 'center',  
+                                    padding: '10px',
+                                    margin: '1px',
+                                    position: 'relative',
+                                    willChange: 'transform',
+                                    borderRadius: '50%',
+                                    overflow: 'hidden', // Clip content inside the div
+                                    boxShadow: '0 0 5px rgba(0, 0, 0, 0.2)', // Add subtle shadow
+                                    maxWidth: '200px',
+                                    minWidth: '100px',
+                                }}
+                                data-foo="bar"
+                                ref={(el) => {
+                                    setItemRef(el, item, rowIndex, index);
+                                    if (el) {
+                                        const centreDelta = getRatioFromCentre(el, rowIndex, index);
+                                        const {verticalScale, horizontalScale} = getScale(el, centreDelta);  
+                                        const scale = verticalScale * horizontalScale;
+                                        const {t, debugStr} = getTranslation(el, centreDelta, {horizontalScale, verticalScale}, item);
+                                        const {x, y} = t;
+                                        const boundingRect = el.getBoundingClientRect();
+                                        // Translate must come before scale, or the translation amounts will be scaled
+                                        el.style.transform = `translateZ(0) translate(${x}px, ${y}px) scale(${scale}) `;
+                                        el.style.transformOrigin = 'center';
+                                        //el.ariaLabel = debugStr;
+                                    }
+                                }}
+                            >
+                                {item}
+                            </div>
                         </div>
                     ))}
                 </div>
