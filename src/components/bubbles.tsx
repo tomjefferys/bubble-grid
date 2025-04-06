@@ -20,6 +20,9 @@ interface Dimension {
 
 const NUM_COLS = 10;
 
+const CONTAINER_HEIGHT_MULTIPLIER = 1.25;
+const CONTAINER_WIDTH_MULTIPLIER = 1.25;
+
 // Debounce function to limit the rate at which a function can fire
 const debounce = (func: Function, wait: number) => {
     let timeout: NodeJS.Timeout;
@@ -111,15 +114,17 @@ const Bubbles = ({ content } : Content) => {
         };
 
         // Increase the height of the container, so elements off the top and bottom are scaled and potentially shown
-        const heightMultiplier = 1.25;
-        const height = containerRect.height * heightMultiplier;
+        const height = containerRect.height * CONTAINER_HEIGHT_MULTIPLIER;
 
         // Calculate the vertical scale based on the distance from the centre of the container
         const verticalDistance = containerCentre.y - elementCentre.y;
         const y = verticalDistance / (height / 2);
 
+
+        const width = containerRect.width * CONTAINER_WIDTH_MULTIPLIER;
+
         const horizontalDistance = containerCentre.x - elementCentre.x;
-        const x = horizontalDistance / (containerRect.width / 2);
+        const x = horizontalDistance / (width / 2);
         return { x, y: y };
     }
 
@@ -151,8 +156,10 @@ const Bubbles = ({ content } : Content) => {
 
     const getTranslation = (element: HTMLDivElement, centreDelta: Dimension, scale : Scale, item: string) 
         : { t : Translation, debugStr : string } => {
+        // TODO do we need to keep originalSizes if we have separate outer divs?
         const originalSize = originalSizes.current[item];
 
+        // Calculate the translation based on the scale
         const MARGIN_SIZE = 2;
         const height = originalSize.height + MARGIN_SIZE;
         const width = originalSize.width + MARGIN_SIZE;
@@ -163,11 +170,12 @@ const Bubbles = ({ content } : Content) => {
 
         const translateXFraction = 1 - scale.horizontalScale;
         const translateXMagnitude = (originalSize.width * translateXFraction) / 2;
-        const x = (Math.sign(centreDelta.x)) * translateXMagnitude;
+        let x = (Math.sign(centreDelta.x)) * translateXMagnitude;
         
         let debugStr = "";
         const container = containerRef.current;
         if (container) {
+            // Caclulate the vertical translation to keep elements in adjacent rows close
             const containerRect = container.getBoundingClientRect();
             // Calculate the difference between the spacing of the rows and the optimal spacing.
             // TODO because the object are ovals, the radius isn't height / 2
@@ -188,18 +196,52 @@ const Bubbles = ({ content } : Content) => {
 
                 y += dy;
 
-                debugStr += `dy: ${dy}, 
-                                y: ${y}, 
-                                cd.y: ${centreDelta.y}, 
-                                adj: ${adjustmentRatio}, 
-                                dist: ${distanceFormCentre}, 
-                                opt: ${optimalVerticalDistance}`;
+                //debugStr += `dy: ${dy}, 
+                //                y: ${y}, 
+                //                cd.y: ${centreDelta.y}, 
+                //                adj: ${adjustmentRatio}, 
+                //                dist: ${distanceFormCentre}, 
+                //                opt: ${optimalVerticalDistance}`;
 
             }
         }
 
+        // Calculate additional translation to handle contiguous rows/columns being scaled
+        // If the centre + height is outside the shrink area then both this element, and the next closest
+        // to the center wil be scaled, so we need to adjust the translation further
+        
+        // How many widths past the scaling boundry are we?
+        // Calculate width as a fraction of the container size
+        const containerRect = containerRef.current?.getBoundingClientRect();
+        if (containerRect) {
+            const SHRINK_AREA = 0.5;
+            const widthRatio = (width / ((containerRect.width / 2) * CONTAINER_WIDTH_MULTIPLIER));  // Divide by 2 as comparing this to the distance from the centre
+            const dxFromShrinkArea = Math.abs(centreDelta.x) - (1 - SHRINK_AREA);
+            if (dxFromShrinkArea > 0) {
+                const widthsFromShrinkArea = dxFromShrinkArea / widthRatio;
+                if (widthsFromShrinkArea > 1) {
+                    // Need to increase the translation to cope with double shrinkage
+                    x += x * (widthsFromShrinkArea - 1);
+                }
+            }
+
+            const heightRatio = (height / ((containerRect.height / 2) * CONTAINER_HEIGHT_MULTIPLIER));
+            const dyFromShrinkArea = Math.abs(centreDelta.y) - (1 - SHRINK_AREA);
+            if (dyFromShrinkArea > 0) {
+                const heightsFromShrinkArea = dyFromShrinkArea / heightRatio;
+                if (heightsFromShrinkArea > 1) {
+                    // Need to increase the translation to cope with double shrinkage
+                    y += y * (heightsFromShrinkArea - 1);
+                }
+            }
+
+        }
+
+
         return { t: {x, y }, debugStr };
     };
+
+
 
     // Split the words into rows
     const rows = [];
