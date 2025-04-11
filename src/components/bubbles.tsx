@@ -33,13 +33,19 @@ const debounce = (func: Function, wait: number) => {
 };
 
 const Bubbles = ({ content } : Content) => {
+    // Keep track of the scroll position to ensure the component re-renders when the user scrolls
     const [scrollPosition, setScrollPosition] = useState({ scrollTop: 0, scrollLeft: 0 });
+
+    // State to track if the component has loaded, so we don't show the content before it's ready
     const [isLoaded, setIsLoaded] = useState(false);
+
     const [isDragging, setIsDragging] = useState(false);
     const [startMousePosition, setStartMousePosition] = useState({ x: 0, y: 0 });
+
+    // Refs to store the container and the outer divs
+    // The outer divs are not scaled or translated so can be relied on to get the correct size and location
     const containerRef = useRef<HTMLDivElement>(null);
     const outerDivs = useRef<DOMRect[][]>([]);
-    const items = useRef<HTMLDivElement[][]>([]);
 
     const handleScroll = () => {
         if (containerRef.current) {
@@ -228,14 +234,6 @@ const Bubbles = ({ content } : Content) => {
     }
     , []);
 
-    const setItemRef = useCallback((el: HTMLDivElement | null, item: string, row : number, column : number) => {
-        if (el) {
-            if (!items.current[row]) {
-                items.current[row] = [];
-            }
-            items.current[row][column] = el;
-        } }, []);
-
     useEffect(() => {
         setIsLoaded(true);
     }, [rows, scrollPosition]);
@@ -328,7 +326,6 @@ const Bubbles = ({ content } : Content) => {
                                 }}
                                 data-foo="bar"
                                 ref={(el) => {
-                                    setItemRef(el, item, rowIndex, index);
                                     if (el) {
                                         const centreDelta = getRatioFromCentre(rowIndex, index);
                                         const {verticalScale, horizontalScale} = getScale(centreDelta);  
