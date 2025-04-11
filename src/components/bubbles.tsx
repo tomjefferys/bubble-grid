@@ -38,7 +38,6 @@ const Bubbles = ({ content } : Content) => {
     const [isDragging, setIsDragging] = useState(false);
     const [startMousePosition, setStartMousePosition] = useState({ x: 0, y: 0 });
     const containerRef = useRef<HTMLDivElement>(null);
-    const rowRefs = useRef<HTMLDivElement[]>([]);
     const outerDivs = useRef<DOMRect[][]>([]);
     const items = useRef<HTMLDivElement[][]>([]);
 
@@ -219,12 +218,6 @@ const Bubbles = ({ content } : Content) => {
         rows.push(content.slice(i, i + NUM_COLS));
     }
 
-    const setRowRef = useCallback((el: HTMLDivElement | null, index: number) => {
-        if (el) {
-            rowRefs.current[index] = el;
-        }
-    }, []);
-
     const setOuterDivRef = useCallback((el: HTMLDivElement | null, row: number, column : number) => {
         if (el) {
             if (!outerDivs.current[row]) {
@@ -299,7 +292,6 @@ const Bubbles = ({ content } : Content) => {
             }}>
             {rows.map((row, rowIndex) => (
                 <div key={rowIndex} 
-                     ref={(el) => setRowRef(el, rowIndex)}
                      style={{ 
                         display: 'grid', 
                         //gridTemplateColumns: `repeat(${NUM_COLS}, minmax(100px, 1fr))`,
