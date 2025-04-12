@@ -1,27 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { getTransform } from './transformbuilder';
 
 interface Content {
     content : string[];
 }
 
-interface Scale {
-    verticalScale: number;
-    horizontalScale: number;
-}
-
-interface Translation {
-    x: number;
-    y: number;
-}
-interface Dimension {
-    x: number;
-    y: number;
-}
-
 const NUM_COLS = 10;
-
-const CONTAINER_HEIGHT_MULTIPLIER = 1.25;
-const CONTAINER_WIDTH_MULTIPLIER = 1.25;
 
 // Debounce function to limit the rate at which a function can fire
 const debounce = (func: Function, wait: number) => {
@@ -82,141 +66,6 @@ const Bubbles = ({ content } : Content) => {
         }
     }, []);
 
-    const getRatioFromCentre = (row : number, column : number) : Dimension => {
-        const container = containerRef.current;
-        if (!container) return { x: 0, y: 0 };
-        const containerRect = container.getBoundingClientRect();
-
-        const outerDivRect = outerDivs.current[row][column];
-
-        // Get the centre of the container and the element
-        const containerCentre = {
-            x: containerRect.left + containerRect.width / 2,
-            y: containerRect.top + containerRect.height / 2,
-        };
-        const elementCentre = {
-            x: outerDivRect.left + outerDivRect.width / 2,    
-            y: outerDivRect.top + outerDivRect.height / 2,
-        };
-
-        // Increase the height of the container, so elements off the top and bottom are scaled and potentially shown
-        const height = containerRect.height * CONTAINER_HEIGHT_MULTIPLIER;
-
-        // Calculate the vertical scale based on the distance from the centre of the container
-        const verticalDistance = containerCentre.y - elementCentre.y;
-        const y = verticalDistance / (height / 2);
-
-
-        const width = containerRect.width * CONTAINER_WIDTH_MULTIPLIER;
-
-        const horizontalDistance = containerCentre.x - elementCentre.x;
-        const x = horizontalDistance / (width / 2);
-        return { x, y: y };
-    }
-
-
-    const getScale = (ratioFromCentre: Dimension) : Scale => {
-        const container = containerRef.current;
-        if (!container) return {verticalScale: 1, horizontalScale: 1};
-
-        const SHRINK_AREA = 0.5;  // The area where the element will shrink, defined as a fraction the distance from the centre.
-
-        const { x, y } = ratioFromCentre; 
-        let verticalScale = 1;
-        if(Math.abs(y) > (1 - SHRINK_AREA)) {
-            const dY = Math.abs(y) - (1 - SHRINK_AREA);
-            verticalScale = 1 - dY / SHRINK_AREA;
-        }
-        verticalScale = Math.max(0, verticalScale);
-
-        let horizontalScale = 1;
-        if (Math.abs(x) > (1 - SHRINK_AREA)) {
-            const dX = Math.abs(x) - (1 - SHRINK_AREA);
-            horizontalScale = 1 - dX / SHRINK_AREA;
-        }
-        horizontalScale = Math.max(0, horizontalScale);
-        return {verticalScale, horizontalScale};
-    };
-
-    const getTranslation = (centreDelta: Dimension, scale : Scale, row : number, column : number) 
-        : { t : Translation, debugStr : string } => {
-
-        if (!outerDivs.current || !outerDivs.current[row] || !outerDivs.current[row][column]) {
-            return { t: { x: 0, y: 0 }, debugStr: "" };
-        }
-
-        const originalRect = outerDivs.current[row][column];
-        //const originalSize = originalSizes.current[item];
-
-        // Calculate the translation based on the scale
-        const MARGIN_SIZE = 2;
-        const height = originalRect.height + MARGIN_SIZE;
-        const width = originalRect.width + MARGIN_SIZE;
-
-        const translateYFraction = 1 - scale.verticalScale;
-        const translateYMagnitude = (height * translateYFraction) / 2;
-        let y = (Math.sign(centreDelta.y)) * translateYMagnitude;
-
-        const translateXFraction = 1 - scale.horizontalScale;
-        const translateXMagnitude = (width * translateXFraction) / 2;
-        let x = (Math.sign(centreDelta.x)) * translateXMagnitude;
-        
-        let debugStr = "";
-        const container = containerRef.current;
-        if (container) {
-            // Calculate the vertical translation to keep elements in adjacent rows close
-            const containerRect = container.getBoundingClientRect();
-
-            // Calculate the difference between the spacing of the rows and the optimal spacing.
-            const hRadius = height / 2;
-            const optimalVerticalDistance = Math.sqrt(3) * hRadius;
-
-            // Optimal vertical disatance (oval calculation) is coming out at 63 vs 43 for the height
-            const verticalAdjustment = height - optimalVerticalDistance;
-            if (Math.abs(centreDelta.y) < 2) {
-                const distanceFormCentre = centreDelta.y * (containerRect.height/2);
-                const adjustmentRatio = distanceFormCentre / height;
-                const dy = adjustmentRatio * verticalAdjustment;
-                y += dy;
-            }
-        }
-
-        // Calculate additional translation to handle contiguous rows/columns being scaled
-        // If the centre + height is outside the shrink area then both this element, and the next closest
-        // to the center wil be scaled, so we need to adjust the translation further
-        
-        // How many widths past the scaling boundry are we?
-        // Calculate width as a fraction of the container size
-        const containerRect = containerRef.current?.getBoundingClientRect();
-        if (containerRect) {
-            const SHRINK_AREA = 0.5;
-            const widthRatio = (width / ((containerRect.width / 2) * CONTAINER_WIDTH_MULTIPLIER));  // Divide by 2 as comparing this to the distance from the centre
-            const dxFromShrinkArea = Math.abs(centreDelta.x) - (1 - SHRINK_AREA);
-            if (dxFromShrinkArea > 0) {
-                const widthsFromShrinkArea = dxFromShrinkArea / widthRatio;
-                if (widthsFromShrinkArea > 1) {
-                    // Need to increase the translation to cope with double shrinkage
-                    x += x * (widthsFromShrinkArea - 1);
-                }
-            }
-
-            const heightRatio = (height / ((containerRect.height / 2) * CONTAINER_HEIGHT_MULTIPLIER));
-            const dyFromShrinkArea = Math.abs(centreDelta.y) - (1 - SHRINK_AREA);
-            if (dyFromShrinkArea > 0) {
-                const heightsFromShrinkArea = dyFromShrinkArea / heightRatio;
-                if (heightsFromShrinkArea > 1) {
-                    // Need to increase the translation to cope with double shrinkage
-                    y += y * (heightsFromShrinkArea - 1);
-                }
-            }
-
-        }
-
-
-        return { t: {x, y }, debugStr };
-    };
-
-
 
     // Split the words into rows
     const rows = [];
@@ -224,15 +73,14 @@ const Bubbles = ({ content } : Content) => {
         rows.push(content.slice(i, i + NUM_COLS));
     }
 
-    const setOuterDivRef = useCallback((el: HTMLDivElement | null, row: number, column : number) => {
+    const setOuterDivRef = (el: HTMLDivElement | null, row: number, column : number) => {
         if (el) {
             if (!outerDivs.current[row]) {
                 outerDivs.current[row] = [];
             }
             outerDivs.current[row][column] = el.getBoundingClientRect();
         }
-    }
-    , []);
+    };
 
     useEffect(() => {
         setIsLoaded(true);
@@ -270,6 +118,15 @@ const Bubbles = ({ content } : Content) => {
             document.removeEventListener('mouseup', handleMouseUp);
         };
     }, [isDragging]);
+
+    const calculateTransform = (rowIndex: number, index: number) : string => {
+        if (!outerDivs.current || !outerDivs.current[rowIndex] || !outerDivs.current[rowIndex][index] || !containerRef.current) {
+            return '';
+        }
+        const containerRect = containerRef.current.getBoundingClientRect();
+        const cellRect = outerDivs.current[rowIndex][index];
+        return getTransform(containerRect, cellRect);
+    }
 
     return (
         <div 
@@ -323,19 +180,13 @@ const Bubbles = ({ content } : Content) => {
                                     boxShadow: '0 0 5px rgba(0, 0, 0, 0.2)', // Add subtle shadow
                                     maxWidth: '200px',
                                     minWidth: '100px',
+                                    transformOrigin: 'center',
                                 }}
                                 data-foo="bar"
                                 ref={(el) => {
                                     if (el) {
-                                        const centreDelta = getRatioFromCentre(rowIndex, index);
-                                        const {verticalScale, horizontalScale} = getScale(centreDelta);  
-                                        const scale = verticalScale * horizontalScale;
-                                        const {t, debugStr} = getTranslation(centreDelta, {horizontalScale, verticalScale}, rowIndex, index);
-                                        const {x, y} = t;
-                                        // Translate must come before scale, or the translation amounts will be scaled
-                                        el.style.transform = `translateZ(0) translate(${x}px, ${y}px) scale(${scale}) `;
-                                        el.style.transformOrigin = 'center';
-                                        //el.ariaLabel = debugStr;
+                                        const transform = calculateTransform(rowIndex, index);
+                                        el.style.transform = transform;
                                     }
                                 }}
                             >
