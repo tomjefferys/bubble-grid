@@ -29,7 +29,6 @@ const Bubbles = ({ content } : Content) => {
     const [startScrollPosition, setStartScrollPosition] = useState({ scrollTop: 0, scrollLeft: 0 });
 
     // Keep track of mouse intertia
-    const [velocity, setVelocity] = useState({ x: 0, y: 0 });
     const velocityRef = useRef({ x: 0, y: 0 });
     const [lastMousePosition, setLastMousePosition] = useState({ x: 0, y: 0 });
     const inertiaRef = useRef<number | null>(null);
@@ -99,7 +98,7 @@ const Bubbles = ({ content } : Content) => {
         setIsDragging(false);
 
         // Start inertia effect
-        if (velocity.x !== 0 || velocity.y !== 0) {
+        if (velocityRef.current.x !== 0 || velocityRef.current.y !== 0) {
             inertiaRef.current = requestAnimationFrame(applyInertia);
         }
     };
@@ -115,18 +114,14 @@ const Bubbles = ({ content } : Content) => {
             const deltaX = event.clientX - lastMousePosition.x;
             const deltaY = event.clientY - lastMousePosition.y;
             // Do we need to think about the time between events?
-            setVelocity({ x: deltaX, y: deltaY });
+            velocityRef.current = { x: deltaX, y: deltaY };
 
             setLastMousePosition({ x: event.clientX, y: event.clientY });
 
         }
     };
     
-    useEffect(() => {
-        velocityRef.current = velocity;
-    }, [velocity])
-
-    const applyInertia = useCallback(() => {
+    const applyInertia = () => {
         if (containerRef.current) {
             const { x, y } = velocityRef.current
 
@@ -142,7 +137,7 @@ const Bubbles = ({ content } : Content) => {
 
             // Stop inertia when velocity is very low
             if (Math.abs(newVelocity.x) < 0.1 && Math.abs(newVelocity.y) < 0.1) {
-                setVelocity({ x: 0, y: 0 });
+                velocityRef.current = { x: 0, y: 0 };
                 if (inertiaRef.current) {
                     cancelAnimationFrame(inertiaRef.current);
                     inertiaRef.current = null;
@@ -152,7 +147,7 @@ const Bubbles = ({ content } : Content) => {
                 inertiaRef.current = requestAnimationFrame(applyInertia);
             }
         }
-    }, [velocity]);
+    };
 
     useEffect(() => {
         if (isDragging) {
