@@ -87,6 +87,10 @@ const Bubbles = ({ content } : Content) => {
 
 
     const handleMouseDown = (event: React.MouseEvent<HTMLDivElement>) => {
+        // Prevent default scrolling behaviour from being triggered
+        // TODO is this also going to break clicking on the elements?
+        event.preventDefault();
+        event.stopPropagation();
         setIsDragging(true);
         setStartMousePosition({ x: event.clientX, y: event.clientY });
         const scrollTop = containerRef.current?.scrollTop || 0;
@@ -105,18 +109,49 @@ const Bubbles = ({ content } : Content) => {
 
     const handleMouseMove = (event: MouseEvent) => {
         if (isDragging && containerRef.current) {
-            const dx = event.clientX - startMousePosition.x;
-            const dy = event.clientY - startMousePosition.y;
-            containerRef.current.scrollLeft = startScrollPosition.scrollLeft - dx;
-            containerRef.current.scrollTop = startScrollPosition.scrollTop - dy;
+            // Prevent default behavior to avoid text selection
+            // and default scrolling behavior
+            event.preventDefault();
+            event.stopPropagation();
+
+            const containerRect = containerRef.current.getBoundingClientRect();
+            const isMouseOut = event.clientY < containerRect.top 
+                                || event.clientY > containerRect.bottom;
+
+            const x = Math.min(
+                        Math.max(event.clientX, containerRect.left), 
+                        containerRect.right);
+            
+            const y = Math.min(
+                        Math.max(event.clientY, containerRect.top),
+                        containerRect.bottom);
+
+            if (!isMouseOut) {
+                const dx = x - startMousePosition.x;
+                const dy = y - startMousePosition.y;
+                containerRef.current.scrollLeft = startScrollPosition.scrollLeft - dx;
+                containerRef.current.scrollTop = startScrollPosition.scrollTop - dy;
+            }
 
             // Calculate the velocity based on the mouse movement
-            const deltaX = event.clientX - lastMousePosition.x;
-            const deltaY = event.clientY - lastMousePosition.y;
+            let deltaX = event.clientX - lastMousePosition.x;
+            let deltaY = event.clientY - lastMousePosition.y;
+
+            const MAX_VELOCITY = 20; // Maximum velocity
+
+            // Don't allow the velocity to be too high
+            if (Math.abs(deltaX) > MAX_VELOCITY) {
+                deltaX = Math.sign(deltaX) * MAX_VELOCITY;
+            }
+
+            if (Math.abs(deltaY) > MAX_VELOCITY) {
+                deltaY = Math.sign(deltaY) * MAX_VELOCITY;
+            }
+
             // Do we need to think about the time between events?
             velocityRef.current = { x: deltaX, y: deltaY };
 
-            setLastMousePosition({ x: event.clientX, y: event.clientY });
+            setLastMousePosition({ x, y });
 
         }
     };
