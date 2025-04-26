@@ -34,7 +34,6 @@ const getRatioFromCentre = (container: DOMRect, cell: DOMRect): Vector => {
     const verticalDistance = containerCentre.y - elementCentre.y;
     const y = verticalDistance / (height / 2);
 
-
     const width = container.width * CONTAINER_WIDTH_MULTIPLIER;
 
     const horizontalDistance = containerCentre.x - elementCentre.x;

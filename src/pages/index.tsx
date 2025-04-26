@@ -3,6 +3,7 @@ import Image from "next/image";
 import { Bubblegum_Sans, Geist, Geist_Mono } from "next/font/google";
 import styles from "@/styles/Home.module.css";
 import "../components/bubbles"
+import { useState } from "react";
 import Bubbles from "../components/bubbles";
 
 const geistSans = Geist({
@@ -47,6 +48,17 @@ const randomWords = generateRandomDictionaryWords(200); // Generate 100 random d
 
 export default function Home() {
 
+  const [words, setWords] = useState<string[]>([]);
+
+  const content = randomWords.map((word, index) => (
+    <div key={index} 
+        onClick={() => {
+          setWords([...words, word])
+        }}>
+          {word}
+    </div>
+  ));
+
   return (
     <>
       <Head>
@@ -59,7 +71,10 @@ export default function Home() {
         className={`${styles.page} ${geistSans.variable} ${geistMono.variable}`}
       >
         <main className={styles.main}>
-            <Bubbles content={randomWords}/>
+          <div>
+            {words.map((word, index) => (<span key={index}>{word} </span>))}
+          </div>
+            <Bubbles content={content}/>
             </main>
       </div>
     </>

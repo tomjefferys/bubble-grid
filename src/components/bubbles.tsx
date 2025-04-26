@@ -2,10 +2,14 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { getTransform } from './transformbuilder';
 
 interface Content {
-    content : string[];
+    content : React.ReactNode[];
 }
 
+type MouseState = "mouseDown" | "dragging" | "mouseUp" | "mouseUpAfterDrag";
+
 const NUM_COLS = 10;
+
+const isUp = (state: MouseState) => state === "mouseUp" || state === "mouseUpAfterDrag";
 
 // Debounce function to limit the rate at which a function can fire
 const debounce = (func: Function, wait: number) => {
@@ -24,7 +28,8 @@ const Bubbles = ({ content } : Content) => {
     const [isLoaded, setIsLoaded] = useState(false);
 
     // State to track if the user is dragging the mouse
-    const [isDragging, setIsDragging] = useState(false);
+    const [mouseState, setMouseState] = useState<MouseState>("mouseUp");
+
     const [startMousePosition, setStartMousePosition] = useState({ x: 0, y: 0 });
     const [startScrollPosition, setStartScrollPosition] = useState({ scrollTop: 0, scrollLeft: 0 });
 
@@ -86,29 +91,67 @@ const Bubbles = ({ content } : Content) => {
     };
 
 
-    const handleMouseDown = (event: React.MouseEvent<HTMLDivElement>) => {
+    const handleMouseDown = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+
+        if (isUp(mouseState)) {
+            setMouseState("mouseDown");
+        } else {
+            return;
+        }
+
         // Prevent default scrolling behaviour from being triggered
-        // TODO is this also going to break clicking on the elements?
         event.preventDefault();
         event.stopPropagation();
-        setIsDragging(true);
+
         setStartMousePosition({ x: event.clientX, y: event.clientY });
         const scrollTop = containerRef.current?.scrollTop || 0;
         const scrollLeft = containerRef.current?.scrollLeft || 0;
         setStartScrollPosition({ scrollTop, scrollLeft });
-    };
+    }, []);
+    
+    const handleClick = useCallback((event: MouseEvent) => {
 
-    const handleMouseUp = () => {
-        setIsDragging(false);
+        // Prevent default behavior to avoid text selection
+        event.preventDefault();
+
+        if (mouseState === "dragging") {
+            console.log("Not propagating - dragging");
+            event.stopImmediatePropagation();
+        }
+
+        // Stop propagation for the click after dragging
+        // This bit is essential to stop the click event from propagating
+        // to the child element when dragging
+        if (mouseState === "mouseUpAfterDrag") {
+            event.stopImmediatePropagation();
+        }
+    }, [mouseState]);
+
+    const handleMouseUp = useCallback((event: MouseEvent) => {
+        if (!isUp(mouseState)) {
+            const newState = mouseState === "dragging" ? "mouseUpAfterDrag" : "mouseUp";
+            setMouseState(newState);
+        } 
+        
+        event.preventDefault();
+        if (mouseState === "dragging") {
+            event.stopImmediatePropagation();
+        }
+        // Stop propagation for the mouseup after dragging
+        if (mouseState === "mouseUpAfterDrag") {
+            event.stopImmediatePropagation();
+        }
 
         // Start inertia effect
         if (velocityRef.current.x !== 0 || velocityRef.current.y !== 0) {
             inertiaRef.current = requestAnimationFrame(applyInertia);
         }
-    };
+    }, [mouseState]);
 
-    const handleMouseMove = (event: MouseEvent) => {
-        if (isDragging && containerRef.current) {
+    const handleMouseMove = useCallback((event: MouseEvent) => {
+        if (!isUp(mouseState) && containerRef.current) {
+            setMouseState("dragging");
+
             // Prevent default behavior to avoid text selection
             // and default scrolling behavior
             event.preventDefault();
@@ -154,7 +197,7 @@ const Bubbles = ({ content } : Content) => {
             setLastMousePosition({ x, y });
 
         }
-    };
+    }, [mouseState, lastMousePosition, startMousePosition, startScrollPosition]);
     
     const applyInertia = () => {
         if (containerRef.current) {
@@ -185,19 +228,27 @@ const Bubbles = ({ content } : Content) => {
     };
 
     useEffect(() => {
-        if (isDragging) {
-            document.addEventListener('mousemove', handleMouseMove);
-            document.addEventListener('mouseup', handleMouseUp);
+        if (mouseState === "mouseDown" || mouseState === "dragging") {
+            document.addEventListener('mousemove', handleMouseMove, true);
+            document.addEventListener('mouseup', handleMouseUp, true);
+            document.addEventListener('click', handleClick, true);
+        } else if (mouseState === "mouseUpAfterDrag") {
+            // Maintain the event listeners for a short time after dragging
+            // to allow for click events to be captured and propagation to be stopped
+            document.addEventListener('mouseup', handleMouseUp, true);
+            document.addEventListener('click', handleClick, true);
         } else {
-            document.removeEventListener('mousemove', handleMouseMove);
-            document.removeEventListener('mouseup', handleMouseUp);
+            // Remove the event listeners when dragging ends
+            document.removeEventListener('mousemove', handleMouseMove, true);
+            document.removeEventListener('mouseup', handleMouseUp, true);
+            document.removeEventListener('click', handleClick, true);
         }
-        // Do we really need to do this?
         return () => {
-            document.removeEventListener('mousemove', handleMouseMove);
-            document.removeEventListener('mouseup', handleMouseUp);
+            document.removeEventListener('mousemove', handleMouseMove, true);
+            document.removeEventListener('mouseup', handleMouseUp, true);
+            document.removeEventListener('click', handleClick, true);
         };
-    }, [isDragging, handleMouseMove, handleMouseUp]);
+    }, [mouseState, handleMouseMove, handleMouseUp, handleClick]);
 
     // Calculate the transform for each element based on its position in the container
     // and the scroll position of the container
@@ -235,7 +286,7 @@ const Bubbles = ({ content } : Content) => {
                 padding: '5vh 15vw',
                 border: '1px solid white',
                 boxSizing: 'border-box',
-                cursor: isDragging ? 'grabbing' : 'grab', // Change cursor during dragging
+                cursor: mouseState === "dragging" ? 'grabbing' : 'grab', // Change cursor during dragging
             }}>
             {rows.map((row, rowIndex) => (
                 <div key={rowIndex} 
@@ -254,10 +305,10 @@ const Bubbles = ({ content } : Content) => {
                         }}>
 
                     {row.map((item, index) => (
-                        <div key = {item + "_outer"}
+                        <div key = {`${rowIndex}-${index}_outer`}
                              ref = {(el) => setOuterDivRef(el, rowIndex, index)}>
                             <div
-                                key={item} 
+                                key={`${rowIndex}-${index}`} 
                                 style={{
                                     border: '1px solid white',
                                     display: 'flex',
