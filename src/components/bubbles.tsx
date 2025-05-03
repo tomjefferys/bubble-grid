@@ -115,7 +115,6 @@ const Bubbles = ({ content } : Content) => {
         event.preventDefault();
 
         if (mouseState === "dragging") {
-            console.log("Not propagating - dragging");
             event.stopImmediatePropagation();
         }
 
@@ -275,6 +274,7 @@ const Bubbles = ({ content } : Content) => {
         <div 
             ref={containerRef}
             onMouseDown={handleMouseDown}
+            role="grid"
             style={{ 
                 width: '90vw',
                 maxWidth: '90vw',
