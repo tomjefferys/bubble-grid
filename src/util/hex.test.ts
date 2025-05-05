@@ -67,6 +67,33 @@ describe('Axial', () => {
     expect(spiralCoords).toContainEqual([0, 3]);
   });
 
+  it.each([
+      [[0,0], [0,0]],
+      [[1,0], [1,0]],
+      [[-2,0], [-2,0]],
+      [[-1,-2], [-2,-2]],
+      [[1,1], [1,1]],
+      [[0,2], [1,2]],
+  ])('should be able to convert %s to cartesian coordinates', 
+      ([q,r], [col, row]) => {
+        const axial = Axial.from([q,r]);
+        const cartesian = axial.toCartesian();
+        expect(cartesian).toEqual([col, row]);
+  });
+
+  it.each([
+      [[0,0], [0,0]],
+      [[1,0], [1,0]],
+      [[-2,0], [-2,0]],
+      [[-2, -2], [-1,-2]],
+      [[1,1], [1,1]],
+      [[1,2], [0,2]],
+  ])('should be able to convert %s from cartesian coordinates', 
+      ([col,row], [q, r]) => {
+        const axial = Axial.fromCartesian(col, row);
+        expect({...axial}).toMatchObject({q, r});
+  });
+
 });
 
 describe('HexGrid', () => {
@@ -153,6 +180,51 @@ describe('HexGrid', () => {
     expect(ring).toContain(6);
     expect(ring).toContain(8);
     expect(ring).toContain(9);
+  });
+
+  it('should be able to return all hexes as an array', () => {
+    const hexGrid = HexMap.fromArray([0, 0], [
+      [1, 2, 3],
+      [4, 5, 6],
+      [7, 8, 9],
+    ]);
+
+    const grid2 = hexGrid.toArray();
+    expect(grid2).toEqual([
+      [1, 2, 3],
+      [4, 5, 6],
+      [7, 8, 9],
+    ])
+  });
+
+  it('should be able to return all hexes as an array even if not at origin', () => {
+    const hexGrid = HexMap.fromArray([-2, -2], [
+      [1, 2, 3],
+      [4, 5, 6],
+      [7, 8, 9],
+    ]);
+
+    const grid2 = hexGrid.toArray();
+    expect(grid2).toEqual([
+      [1, 2, 3],
+      [4, 5, 6],
+      [7, 8, 9],
+    ])
+  });
+
+  it('should be able to return all hexes as an array with undefined values', () => {
+    const hexGrid = HexMap.fromArray([0, 0], [
+      [1, 2, 3],
+      [4],
+      [7, 8, 9],
+    ]);
+
+    const grid2 = hexGrid.toArray();
+    expect(grid2).toEqual([
+      [1, 2, 3],
+      [4, undefined, undefined],
+      [7, 8, 9],
+    ])
   });
 
 });

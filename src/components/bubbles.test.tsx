@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import Bubbles from '../bubbles';
+import Bubbles from './bubbles';
 
 describe('Bubbles Component', () => {
     const mockContent = Array.from({ length: 20 }, (_, i) => (

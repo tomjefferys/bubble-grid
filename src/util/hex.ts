@@ -10,12 +10,28 @@ export type HexCoord = Axial | Cube | [number, number] | [number, number, number
 // The s coordinate is derived from q and r.
 export class Axial {
     constructor(public q: number, public r: number) {}
-
-    static fromCube(h: Cube): Axial {
-        if (!isValidHex(h)) {
-            throw new Error("Invalid hex coordinates");
+    
+    static from(hex : HexCoord) : Axial {
+        if (Array.isArray(hex)) {
+            if (hex.length === 2) {
+                return new Axial(hex[0], hex[1]);
+            } else if (hex.length === 3) {
+                if (!isValidHex({ q: hex[0], r: hex[1], s: hex[2] })) {
+                    throw new Error("Invalid hex coordinates");
+                }
+                return new Axial(hex[0], hex[1]);
+            }
+        } else if (typeof hex === 'object') {
+            if ('q' in hex && 'r' in hex && 's' in hex) {
+                if (!isValidHex(hex)) {
+                    throw new Error("Invalid hex coordinates");
+                }
+                return new Axial(hex.q, hex.r);
+            } else if ('q' in hex && 'r' in hex) {
+                return new Axial(hex.q, hex.r);
+            }
         }
-        return new Axial(h.q, h.r);
+        throw new Error("Invalid hex coordinates");
     }
 
     static ZERO = new Axial(0, 0);
@@ -85,36 +101,25 @@ export class Axial {
     scale(scalar: number): Axial {
         return new Axial(this.q * scalar, this.r * scalar);
     }
+
+    toCartesian = (): [number, number] => {
+        const col = this.q + (this.r - (this.r & 1)) / 2;
+        const row = this.r;
+        return [col, row];
+    }
+
+    static fromCartesian = (col: number, row: number): Axial => {
+        const q = col - (row - (row & 1)) / 2;
+        const r = row;
+        return new Axial(q, r);
+    }
 }
 
-// Convert a hex coordinate to an Axial coordinate
-export const getAxial = (hex : HexCoord) : Axial => {
-    if (Array.isArray(hex)) {
-        if (hex.length === 2) {
-            return new Axial(hex[0], hex[1]);
-        } else if (hex.length === 3) {
-            if (!isValidHex({ q: hex[0], r: hex[1], s: hex[2] })) {
-                throw new Error("Invalid hex coordinates");
-            }
-            return new Axial(hex[0], hex[1]);
-        }
-    } else if (typeof hex === 'object') {
-        if ('q' in hex && 'r' in hex && 's' in hex) {
-            if (!isValidHex(hex)) {
-                throw new Error("Invalid hex coordinates");
-            }
-            return new Axial(hex.q, hex.r);
-        } else if ('q' in hex && 'r' in hex) {
-            return new Axial(hex.q, hex.r);
-        }
-    }
-    throw new Error("Invalid hex coordinates");
-};
-
 export class HexMap<V> {
-    private grid: Map<string, V>;
+
+    private grid: Map<string, [Axial, V]>;
     constructor() {
-        this.grid = new Map<string, V>();
+        this.grid = new Map<string, [Axial, V]>();
     }
 
     static fromArray<V>(topLeft: HexCoord, arr: V[][]): HexMap<V> {
@@ -124,7 +129,7 @@ export class HexMap<V> {
     }
 
     setArray(topLeft: HexCoord, arr: V[][]): void {
-        let rowStart = getAxial(topLeft);
+        let rowStart = Axial.from(topLeft);
         let hex = rowStart;
         for (let row = 0; row < arr.length; row++) {
             for (let col = 0; col < arr[row].length; col++) {
@@ -139,19 +144,20 @@ export class HexMap<V> {
     }
 
     set(hex: HexCoord, value: V): void {
-        const axialHex = getAxial(hex);
+        const axialHex = Axial.from(hex);
         const key = this.getKey(axialHex);
-        this.grid.set(key, value);
+        this.grid.set(key, [axialHex, value]);
     }
 
     get(hex: HexCoord): V | undefined {
-        const axialHex = getAxial(hex);
+        const axialHex = Axial.from(hex);
         const key = this.getKey(axialHex);
-        return this.grid.get(key);
+        const result = this.grid.get(key);
+        return result ? result[1] : undefined;
     }
 
     getNeighbors(hex: HexCoord): V[] {
-        const axialHex = getAxial(hex);
+        const axialHex = Axial.from(hex);
         const neighbors: V[] = [];
         for (const direction of Axial.DIRECTION_VECTORS) {
             const neighbourHex = axialHex.add(direction);
@@ -194,14 +200,50 @@ export class HexMap<V> {
         });
     }
 
+    toArray(): (V | undefined)[][] {
+
+        let minRow = Number.MAX_VALUE;
+        let maxRow = Number.MIN_VALUE;
+        let minCol = Number.MAX_VALUE;
+        let maxCol = Number.MIN_VALUE;
+
+        Array.from(this.grid.values())
+             .map(([hex, _]) => getCartesian(hex))
+             .forEach(([col, row]) => {
+                 minRow = Math.min(minRow, row);
+                 maxRow = Math.max(maxRow, row);
+                 minCol = Math.min(minCol, col);
+                 maxCol = Math.max(maxCol, col);
+             });
+        
+        const arr : (V | undefined)[][] = [];
+        for(let row = minRow; row <= maxRow; row++) {
+            const rowArr : (V | undefined)[] = [];
+            arr.push(rowArr);
+            for (let col = minCol; col <= maxCol; col++) {
+                const hex = Axial.fromCartesian(col, row);
+                const value = this.get(hex);
+                rowArr.push(value);
+            }
+        }
+        return arr;
+    }
+
     private getKey(hex: Axial): string {
         return `${hex.q},${hex.r}`;
     }
 }
 
+const getCartesian = (hex: HexCoord): [number, number] => {
+    const axial = Axial.from(hex);
+    const col = axial.q + (axial.r - (axial.r & 1)) / 2;
+    const row = axial.r;
+    return [col, row];
+}
+
 export const getRingCoords = (centre: HexCoord, radius: number): Axial[] => {
     const ring: Axial[] = [];
-    const centreHex = getAxial(centre);
+    const centreHex = Axial.from(centre);
     if (radius === 0) {
         ring.push(centreHex);
         return ring;
@@ -218,7 +260,7 @@ export const getRingCoords = (centre: HexCoord, radius: number): Axial[] => {
 
 export const getSpiralCoords = (centre: HexCoord, size: number): Axial[] => {
     const spiral: Axial[] = [];
-    const centreHex = getAxial(centre);
+    const centreHex = Axial.from(centre);
     let hexCount = 0;
     let radius = 0;
     while(hexCount < size) {
