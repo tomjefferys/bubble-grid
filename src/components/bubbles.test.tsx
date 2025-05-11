@@ -1,14 +1,16 @@
-import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import Bubbles from './bubbles';
+import * as Rect from '../util/rect';
 
 describe('Bubbles Component', () => {
-    const mockContent = Array.from({ length: 20 }, (_, i) => (
+    const items = Array.from({ length: 20 }, (_, i) => (
         <div key={i} data-testid={`bubble-${i}`}>
             Bubble {i + 1}
         </div>
     ));
+
+    const mockContent = Rect.createRect(items, 10); // Assuming 10 columns
 
     test('renders the bubbles correctly', () => {
         render(<Bubbles content={mockContent} />);

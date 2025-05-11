@@ -1,8 +1,7 @@
 import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
 import './App.css'
 import Bubbles from './components/bubbles'
+import * as Rect from './util/rect'
 
 const wordSource = [
   "apple", "banana", "cherry", "date", "elderberry", "fig", "grape", "honeydew",
@@ -46,13 +45,16 @@ function App() {
     </div>
   ));
 
+  const NUM_COLS = 10;
+  const rows = Rect.createRect(content, 10);
+
   return (
     <>
       <main>
        <div>
             {words.map((word, index) => (<span key={index}>{word} </span>))}
        </div>
-       <Bubbles content={content}/>
+       <Bubbles content={rows}/>
        </main>
     </>
   )

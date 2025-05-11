@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { getTransform } from './transformbuilder';
 
 interface Content {
-    content : React.ReactNode[];
+    content : React.ReactNode[][];
 }
 
 type MouseState = "mouseDown" | "dragging" | "mouseUp" | "mouseUpAfterDrag";
@@ -261,14 +261,14 @@ const Bubbles = ({ content } : Content) => {
     }
 
     // Split the words into rows
-    const rows = [];
-    for (let i = 0; i < content.length; i += NUM_COLS) {
-        rows.push(content.slice(i, i + NUM_COLS));
-    }
+    //const rows = [];
+    //for (let i = 0; i < content.length; i += NUM_COLS) {
+    //    rows.push(content.slice(i, i + NUM_COLS));
+    //}
 
     useEffect(() => {
         setIsLoaded(true);
-    }, [rows, scrollPosition]);
+    }, [content, scrollPosition]);
 
     return (
         <div 
@@ -288,7 +288,7 @@ const Bubbles = ({ content } : Content) => {
                 boxSizing: 'border-box',
                 cursor: mouseState === "dragging" ? 'grabbing' : 'grab', // Change cursor during dragging
             }}>
-            {rows.map((row, rowIndex) => (
+            {content.map((row, rowIndex) => (
                 <div key={rowIndex} 
                      style={{ 
                         display: 'grid', 
