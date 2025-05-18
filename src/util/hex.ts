@@ -128,6 +128,12 @@ export class HexMap<V> {
         return map;
     }
 
+    static fromSpiral<V>(centre: HexCoord, values: V[]): HexMap<V> {
+        const map = new HexMap<V>();
+        map.setSpiral(centre, values);
+        return map;
+    }
+
     setArray(topLeft: HexCoord, arr: V[][]): void {
         let rowStart = Axial.from(topLeft);
         let hex = rowStart;
@@ -200,8 +206,10 @@ export class HexMap<V> {
         });
     }
 
+    // Convert the hex grid to a 2D array.
+    // We first translate the hexes so that the minimum row is even,
+    //  to be consistent about which rows will need to be indented.
     toArray(): (V | undefined)[][] {
-
         let minRow = Number.MAX_VALUE;
         let maxRow = Number.MIN_VALUE;
         let minCol = Number.MAX_VALUE;
@@ -215,6 +223,17 @@ export class HexMap<V> {
                  minCol = Math.min(minCol, col);
                  maxCol = Math.max(maxCol, col);
              });
+
+        // Translate the hexes so that minRow will be even
+        if (minRow % 2 !== 0) {
+            const newGrid = new HexMap<V>();
+            Array.from(this.grid.values())
+                 .forEach(([hex, value]) => {
+                        const newHex = hex.add(Axial.SOUTH_EAST);
+                        newGrid.set(newHex, value);
+                 });
+            return newGrid.toArray();
+        }
         
         const arr : (V | undefined)[][] = [];
         for(let row = minRow; row <= maxRow; row++) {
@@ -227,6 +246,25 @@ export class HexMap<V> {
             }
         }
         return arr;
+    }
+
+    toString(): string {
+        const arr = this.toArray();
+        const strArr = arr.map(row => row.map(item => (item)? item.toString() : " "));
+        const maxLength = strArr.flat()
+                                .reduce((acc, item) => Math.max(acc, item.length), 0);
+        const paddedArr = strArr.map(row => row.map(item => item.padStart(maxLength/2)
+                                                                .padEnd(maxLength)));
+
+        let str = "";
+        paddedArr.forEach((row, index) => {
+            if (index % 2 === 1) {
+                str += " ".repeat(maxLength/2 + 1);
+            }
+            str += row.join(" ");
+            str += "\n";
+        });
+        return str;
     }
 
     private getKey(hex: Axial): string {

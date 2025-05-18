@@ -2,6 +2,7 @@ import { useState } from 'react'
 import './App.css'
 import Bubbles from './components/bubbles'
 import * as Rect from './util/rect'
+import { Axial, HexMap } from './util/hex'
 
 const wordSource = [
   "apple", "banana", "cherry", "date", "elderberry", "fig", "grape", "honeydew",
@@ -30,7 +31,7 @@ const generateRandomDictionaryWords = (numWords: number) => {
   return words;
 };
 
-const randomWords = generateRandomDictionaryWords(200); // Generate 100 random dictionary words
+const randomWords = generateRandomDictionaryWords(37); // Generate 100 random dictionary words
 
 
 function App() {
@@ -45,8 +46,10 @@ function App() {
     </div>
   ));
 
-  const NUM_COLS = 10;
-  const rows = Rect.createRect(content, 10);
+  const hexMap = HexMap.fromSpiral(Axial.ZERO, randomWords);
+
+  const rows = hexMap.toArray();
+
 
   return (
     <>
