@@ -1,9 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, CSSProperties } from 'react';
 import { getTransform } from './transformbuilder';
-
-interface Content {
-    content : React.ReactNode[][];
-}
+import { Content, Item } from './bubbletypes';
 
 type MouseState = "mouseDown" | "dragging" | "mouseUp" | "mouseUpAfterDrag";
 
@@ -264,10 +261,13 @@ const Bubbles = ({ content } : Content) => {
         setIsLoaded(true);
     }, [content, scrollPosition]);
 
-    const getCellStyle = (node : React.ReactNode ) : CSSProperties => {
+    const getCellStyle = (item? : Item ) : CSSProperties => {
         const style = {...baseStyle}
-        if (node) {
+        if (item) {
             Object.assign(style, definedCellStyle);
+            if (item.style) {
+                Object.assign(style, item.style);
+            }
         }
         return style;
     };
@@ -339,7 +339,7 @@ const Bubbles = ({ content } : Content) => {
                                     }
                                 }}
                             >
-                                {item}
+                                {item?.item}
                             </div>
                         </div>
                     ))}

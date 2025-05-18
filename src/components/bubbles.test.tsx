@@ -4,11 +4,12 @@ import Bubbles from './bubbles';
 import * as Rect from '../util/rect';
 
 describe('Bubbles Component', () => {
-    const items = Array.from({ length: 20 }, (_, i) => (
-        <div key={i} data-testid={`bubble-${i}`}>
+    const items = Array.from({ length: 20 }, (_, i) => {
+         const item = (<div key={i} data-testid={`bubble-${i}`}>
             Bubble {i + 1}
-        </div>
-    ));
+        </div>)
+        return { item };
+    });
 
     const mockContent = Rect.createRect(items, 10); // Assuming 10 columns
 

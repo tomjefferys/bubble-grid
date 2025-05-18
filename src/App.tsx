@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import './App.css'
 import Bubbles from './components/bubbles'
+import * as Bubble from './components/bubbletypes'
 import * as Rect from './util/rect'
 import { Axial, HexMap } from './util/hex'
 
@@ -31,19 +32,40 @@ const getWords = (numWords: number) => {
   return words;
 };
 
-const wordList = getWords(37); // Generate 100 random dictionary words
+const wordList = getWords(61); // Generate 100 random dictionary words
+
+const fonts = [
+  "Arial, sans-serif",
+  "Georgia, serif",
+  "Courier New, monospace",
+  "Verdana, sans-serif",
+  "Tahoma, sans-serif",
+  "Times New Roman, serif",
+  "Comic Sans MS, cursive",
+  "Impact, sans-serif",
+];
 
 function App() {
   const [words, setWords] = useState<string[]>([]);
 
-  const content = wordList.map((word, index) => (
-    <div key={index} 
-        onClick={() => {
-          setWords([...words, word])
-        }}>
-          {word}
-    </div>
-  ));
+  const createItem = (word: string, index: number) : Bubble.Item => {
+      const item = (
+        <div key={index} 
+            onClick={() => {
+              setWords([...words, word])
+            }}>
+              {word}
+        </div>
+      );
+      const style = {
+        backgroundColor: `hsl(${index * 3}, 100%, 50%)`,
+        color: `hsl(${(index * 3) + 180}, 100%, 50%)`,
+        fontFamily: fonts[index % fonts.length],
+      }
+      return {item, style};
+  }
+
+  const content = wordList.map(createItem);
 
   const hexMap = HexMap.fromSpiral(Axial.ZERO, content);
 
