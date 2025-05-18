@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, CSSProperties } from 'react';
 import { getTransform } from './transformbuilder';
 
 interface Content {
@@ -260,15 +260,37 @@ const Bubbles = ({ content } : Content) => {
         return getTransform(containerRect, cellRect);
     }
 
-    // Split the words into rows
-    //const rows = [];
-    //for (let i = 0; i < content.length; i += NUM_COLS) {
-    //    rows.push(content.slice(i, i + NUM_COLS));
-    //}
-
     useEffect(() => {
         setIsLoaded(true);
     }, [content, scrollPosition]);
+
+    const getCellStyle = (node : React.ReactNode ) : CSSProperties => {
+        const style = {...baseStyle}
+        if (node) {
+            Object.assign(style, definedCellStyle);
+        }
+        return style;
+    };
+
+    const definedCellStyle = {
+        border: '1px solid white',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',  
+        padding: '10px',
+        margin: '1px',
+        position: 'relative',
+        willChange: 'transform',
+        borderRadius: '50%',
+        overflow: 'hidden', // Clip content inside the div
+        boxShadow: '0 0 5px rgba(0, 0, 0, 0.2)', // Add subtle shadow
+        maxWidth: '200px',
+        transformOrigin: 'center',
+    }
+
+    const baseStyle = {
+        minWidth: '100px'
+    };
 
     return (
         <div 
@@ -292,7 +314,6 @@ const Bubbles = ({ content } : Content) => {
                 <div key={rowIndex} 
                      style={{ 
                         display: 'grid', 
-                        //gridTemplateColumns: `repeat(${NUM_COLS}, minmax(100px, 1fr))`,
                         gridTemplateColumns: `repeat(${NUM_COLS}, minmax(auto, 100px))`,
                         marginLeft: rowIndex % 2 === 1 && outerDivs.current[rowIndex]
                             ? `${outerDivs.current[rowIndex][0]?.width / 2}px`
@@ -309,22 +330,7 @@ const Bubbles = ({ content } : Content) => {
                              ref = {(el) => setOuterDivRef(el, rowIndex, index)}>
                             <div
                                 key={`${rowIndex}-${index}`} 
-                                style={{
-                                    border: '1px solid white',
-                                    display: 'flex',
-                                    justifyContent: 'center',
-                                    alignItems: 'center',  
-                                    padding: '10px',
-                                    margin: '1px',
-                                    position: 'relative',
-                                    willChange: 'transform',
-                                    borderRadius: '50%',
-                                    overflow: 'hidden', // Clip content inside the div
-                                    boxShadow: '0 0 5px rgba(0, 0, 0, 0.2)', // Add subtle shadow
-                                    maxWidth: '200px',
-                                    minWidth: '100px',
-                                    transformOrigin: 'center',
-                                }}
+                                style={getCellStyle(item)}
                                 data-foo="bar"
                                 ref={(el) => {
                                     if (el) {
