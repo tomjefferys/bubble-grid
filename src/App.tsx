@@ -22,7 +22,7 @@ const wordSource = [
 ];
 
 // Function to generate a list of random dictionary words
-const generateRandomDictionaryWords = (numWords: number) => {
+const getWords = (numWords: number) => {
   const words = [];
   for (let i = 0; i < numWords; i++) {
     const index = i % wordSource.length;
@@ -31,13 +31,12 @@ const generateRandomDictionaryWords = (numWords: number) => {
   return words;
 };
 
-const randomWords = generateRandomDictionaryWords(37); // Generate 100 random dictionary words
-
+const wordList = getWords(37); // Generate 100 random dictionary words
 
 function App() {
   const [words, setWords] = useState<string[]>([]);
 
-  const content = randomWords.map((word, index) => (
+  const content = wordList.map((word, index) => (
     <div key={index} 
         onClick={() => {
           setWords([...words, word])
@@ -46,7 +45,7 @@ function App() {
     </div>
   ));
 
-  const hexMap = HexMap.fromSpiral(Axial.ZERO, randomWords);
+  const hexMap = HexMap.fromSpiral(Axial.ZERO, content);
 
   const rows = hexMap.toArray();
 

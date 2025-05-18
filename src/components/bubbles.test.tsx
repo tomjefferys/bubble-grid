@@ -43,6 +43,19 @@ describe('Bubbles Component', () => {
         expect(container.scrollLeft).not.toBeLessThan(startScrollLeft);
     });
 
+    test("Click propagations should happen unless dragging", () => {
+        const handleClick = jest.fn();
+        render(
+            <div onClick={handleClick}>
+                <Bubbles content={mockContent} />
+            </div>
+        );
+        const container = screen.getByRole('grid'); // Assuming the container is a grid
+
+        fireEvent.click(container);
+        expect(handleClick).toHaveBeenCalledTimes(1);
+    });
+
     test('prevents click propagation after dragging', () => {
         const handleClick = jest.fn();
         render(
