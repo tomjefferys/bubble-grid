@@ -58,6 +58,7 @@ function App() {
         </div>
       );
       const style = {
+        border: "",
         backgroundColor: `hsl(${index * 3}, 100%, 50%)`,
         color: `hsl(${(index * 3) + 180}, 100%, 50%)`,
         fontFamily: fonts[index % fonts.length],
