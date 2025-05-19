@@ -100,6 +100,13 @@ const Bubbles = ({ content } : Content) => {
         event.preventDefault();
         event.stopPropagation();
 
+        // Stop any inertia effect
+        if (inertiaRef.current) {
+            cancelAnimationFrame(inertiaRef.current);
+            inertiaRef.current = null;
+        }
+        velocityRef.current = { x: 0, y: 0 };
+
         setStartMousePosition({ x: event.clientX, y: event.clientY });
         const scrollTop = containerRef.current?.scrollTop || 0;
         const scrollLeft = containerRef.current?.scrollLeft || 0;
