@@ -17,7 +17,7 @@ const debounce = (func: Function, wait: number) => {
     };
 };
 
-const Bubbles = ({ content } : Content) => {
+const BubbleGrid = ({ content } : Content) => {
     // Keep track of the scroll position to ensure the component re-renders when the user scrolls
     const [scrollPosition, setScrollPosition] = useState({ scrollTop: 0, scrollLeft: 0 });
 
@@ -356,4 +356,4 @@ const Bubbles = ({ content } : Content) => {
     );
 };
 
-export default Bubbles;
+export default BubbleGrid;
