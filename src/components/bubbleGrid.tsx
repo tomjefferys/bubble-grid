@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, CSSProperties } from 'react';
-import { getTransform } from './transformbuilder';
-import { Content, Item } from './bubbletypes';
+import { getTransform } from './transformBuilder';
+import { Content, Item } from './bubbleGridTypes';
 
 type MouseState = "mouseDown" | "dragging" | "mouseUp" | "mouseUpAfterDrag";
 

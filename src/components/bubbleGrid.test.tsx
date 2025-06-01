@@ -1,6 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import Bubbles from './bubbles';
+import Bubbles from './bubbleGrid';
 import * as Rect from '../util/rect';
 
 describe('Bubbles Component', () => {

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import './App.css'
-import Bubbles from './components/bubbles'
-import * as Bubble from './components/bubbletypes'
+import Bubbles from './components/bubbleGrid'
+import * as Bubble from './components/bubbleGridTypes'
 import * as Rect from './util/rect'
 import { Axial, HexMap } from './util/hex'
 
