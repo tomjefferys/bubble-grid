@@ -1,14 +1,24 @@
+/* eslint-disable */
 import React, { useState, useEffect, useRef, useCallback, CSSProperties } from 'react';
 import { getTransform } from './transformBuilder';
-import { Content, Item } from './bubbleGridTypes';
 
 type MouseState = "mouseDown" | "dragging" | "mouseUp" | "mouseUpAfterDrag";
+
+export interface Item {
+    item: React.ReactNode;
+    style?: React.CSSProperties;
+}   
+
+export interface Content {
+    content : (Item | undefined)[][];
+}
 
 const NUM_COLS = 10;
 
 const isUp = (state: MouseState) => state === "mouseUp" || state === "mouseUpAfterDrag";
 
 // Debounce function to limit the rate at which a function can fire
+// eslint -disable-next-line
 const debounce = (func: Function, wait: number) => {
     let timeout: NodeJS.Timeout;
     return (...args: any[]) => {
@@ -17,7 +27,8 @@ const debounce = (func: Function, wait: number) => {
     };
 };
 
-const BubbleGrid = ({ content } : Content) => {
+export const BubbleGrid = ({ content } : Content) => {
+
     // Keep track of the scroll position to ensure the component re-renders when the user scrolls
     const [scrollPosition, setScrollPosition] = useState({ scrollTop: 0, scrollLeft: 0 });
 
@@ -79,7 +90,9 @@ const BubbleGrid = ({ content } : Content) => {
     // Set the outer div ref to get the size and location of the element,
     // the outer div is not scaled or translated so can be relied on to get the correct size and location
     const setOuterDivRef = (el: HTMLDivElement | null, row: number, column : number) => {
-        if (el) {
+        // Check if the element is not null and is visible
+        // offsetParent is null if the element is not visible (e.g. display: none
+        if (el && el.offsetParent !== null) {
             if (!outerDivs.current[row]) {
                 outerDivs.current[row] = [];
             }
@@ -305,14 +318,13 @@ const BubbleGrid = ({ content } : Content) => {
             onMouseDown={handleMouseDown}
             role="grid"
             style={{ 
-                width: '90vw',
-                maxWidth: '90vw',
-                height: '25vh',
+                height: '100%',
+                width: '100%',
                 position: 'relative',
                 overflowX: 'auto',
                 overflowY: 'auto',
                 display: 'grid',
-                padding: '5vh 15vw',
+                padding: '0vh 15vw',
                 border: '1px solid white',
                 boxSizing: 'border-box',
                 cursor: mouseState === "dragging" ? 'grabbing' : 'grab', // Change cursor during dragging
@@ -328,6 +340,8 @@ const BubbleGrid = ({ content } : Content) => {
                         marginRight: rowIndex % 2 === 0 && outerDivs.current[rowIndex]
                             ? `${outerDivs.current[rowIndex][0]?.width / 2}px`
                         : '0',
+                        marginTop: rowIndex === 0 ? '2vh' : '0',
+                        marginBottom: rowIndex === content.length - 1 ? '2vh' : '0',
                         willChange: 'transform',
                         visibility: isLoaded ? 'visible' : 'hidden',
                         }}>
