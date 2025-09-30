@@ -1,8 +1,6 @@
 import { useState } from 'react'
 import './App.css'
-import Bubbles from './components/bubbleGrid'
-import * as Bubble from './components/bubbleGridTypes'
-import * as Rect from './util/rect'
+import { BubbleGrid, Item } from './components/bubbleGrid'
 import { Axial, HexMap } from './util/hex'
 
 const wordSource = [
@@ -48,7 +46,7 @@ const fonts = [
 function App() {
   const [words, setWords] = useState<string[]>([]);
 
-  const createItem = (word: string, index: number) : Bubble.Item => {
+  const createItem = (word: string, index: number) : Item => {
       const item = (
         <div key={index} 
             onClick={() => {
@@ -75,12 +73,17 @@ function App() {
 
   return (
     <>
-      <main>
-       <div>
+      <div style={{ height: "95%",
+                    width: "100%",
+                    boxSizing: "border-box",
+                     }}>
+       <div style={{ height: "30%", width: "100%" }}>
             {words.map((word, index) => (<span key={index}>{word} </span>))}
        </div>
-       <Bubbles content={rows}/>
-       </main>
+       <div style={{ height: "30%", width: "75%", margin: "0 auto" }}>
+          <BubbleGrid content={rows}/>
+       </div>
+       </div>
     </>
   )
 }
