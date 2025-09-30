@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import './App.css'
 import { BubbleGrid, Item } from './components/bubbleGrid'
 import { Axial, HexMap } from './util/hex'
@@ -50,7 +50,7 @@ function App() {
       const item = (
         <div key={index} 
             onClick={() => {
-              setWords([...words, word])
+                setWords(prevWords => [...prevWords, word])
             }}>
               {word}
         </div>
@@ -64,12 +64,11 @@ function App() {
       return {item, style};
   }
 
-  const content = wordList.map(createItem);
-
-  const hexMap = HexMap.fromSpiral(Axial.ZERO, content);
-
-  const rows = hexMap.toArray();
-
+  const rows = useMemo(() => {
+    const content = wordList.map(createItem);
+    const hexMap = HexMap.fromSpiral(Axial.ZERO, content);
+    return hexMap.toArray();
+  }, []);
 
   return (
     <>
