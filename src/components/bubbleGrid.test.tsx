@@ -37,7 +37,10 @@ describe('Bubbles Component', () => {
         fireEvent.mouseMove(container, { clientX: 150, clientY: 150 });
 
         // Simulate mouse up
-        fireEvent.mouseUp(container);
+        fireEvent.mouseUp(container, { clientX: 150, clientY: 150 });
+
+        // Manually fire click with correct coordinates
+        fireEvent.click(container, { clientX: 150, clientY: 150 });
 
         // Check if the scroll position has changed
         expect(container.scrollTop).not.toBeLessThan(startScrollTop);
@@ -70,7 +73,9 @@ describe('Bubbles Component', () => {
         // Simulate mouse down, move, and up to trigger dragging
         fireEvent.mouseDown(container, { clientX: 100, clientY: 100 });
         fireEvent.mouseMove(container, { clientX: 150, clientY: 150 });
-        fireEvent.mouseUp(container);
+        fireEvent.mouseUp(container, { clientX: 150, clientY: 150 });
+        // Manually fire click with correct coordinates
+        fireEvent.click(container, { clientX: 150, clientY: 150 });
 
         // Simulate a click event
         fireEvent.click(container);
@@ -85,4 +90,28 @@ describe('Bubbles Component', () => {
 
         expect(handleClick).toHaveBeenCalledTimes(1);
     });
+
+    test('Do not prevent click propagation if drag distance is minimal', () => {
+        const handleClick = jest.fn();
+        render(
+            <div onClick={handleClick}>
+                <Bubbles content={mockContent} />
+            </div>
+        );
+
+        const container = screen.getByRole('grid'); // Assuming the container is a grid
+
+        // Simulate mouse down, move a minimal distance, and up
+        fireEvent.mouseDown(container, { clientX: 100, clientY: 100 });
+        fireEvent.mouseMove(container, { clientX: 102, clientY: 102 });
+        fireEvent.mouseUp(container, { clientX: 102, clientY: 102 });
+        // Manually fire click with correct coordinates
+        fireEvent.click(container, { clientX: 102, clientY: 102 });
+
+        // Simulate a click event
+        fireEvent.click(container);
+
+        // Ensure the click event was propagated
+        expect(handleClick).toHaveBeenCalledTimes(1);
+    })
 });
